@@ -1,0 +1,35 @@
+{
+  "name": "wavekb",
+  "version": "1.0.0",
+  "description": "A Knowledge Base that lets you find gaps in the knowledge!",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "synth": "cdk synth",
+    "diagram": "npm-run-all synth digram:generate",
+    "digram:generate": "cdk-dia"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/3p3r/wavekb.git"
+  },
+  "keywords": [
+    "RAG"
+  ],
+  "author": "Sepehr Laal",
+  "license": "MIT",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/3p3r/wavekb/issues"
+  },
+  "homepage": "https://github.com/3p3r/wavekb#readme",
+  "devDependencies": {
+    "aws-cdk": "^2.1027.0",
+    "cdk-dia": "^0.12.0",
+    "cdk-nextjs-standalone": "^4.3.0",
+    "docker-compose-cdk": "^0.0.3",
+    "npm-run-all": "^4.1.5",
+    "source-map-support": "^0.5.21",
+    "tsx": "^4.20.5"
+  }
+}
