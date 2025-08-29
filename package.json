@@ -4,10 +4,13 @@
   "description": "A Knowledge Base that lets you find gaps in the knowledge!",
   "main": "index.js",
   "scripts": {
+    "postinstall": "npm install --prefix app",
     "test": "echo \"Error: no test specified\" && exit 1",
     "synth": "cdk synth",
     "diagram": "npm-run-all synth digram:generate",
-    "digram:generate": "cdk-dia"
+    "digram:generate": "cdk-dia",
+    "dev:up": "docker-compose -f docker/docker-compose.yml up",
+    "dev:down": "docker-compose -f docker/docker-compose.yml down"
   },
   "repository": {
     "type": "git",

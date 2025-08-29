@@ -1,1 +1,18 @@
+services:
+  nextjslocal:
+    image: node:alpine
+    user: "1000"
+    command: sh -c 'cd /app && npm install && npm run dev'
+    privileged: false
+    deploy:
+      mode: replicated
+      replicas: 1
+    environment:
+      PORT: "4000"
+    ports:
+      - 4000:4000
+    volumes:
+      - type: bind
+        source: ../app
+        target: /app
 name: wavekb
