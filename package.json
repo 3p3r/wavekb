@@ -4,7 +4,9 @@
   "description": "A Knowledge Base that lets you find gaps in the knowledge!",
   "main": "index.js",
   "scripts": {
-    "postinstall": "npm install --prefix app",
+    "postinstall": "npm-run-all postinstall:patch postinstall:install",
+    "postinstall:patch": "patch-package",
+    "postinstall:install": "npm install --prefix app",
     "test": "echo \"Error: no test specified\" && exit 1",
     "synth": "cdk synth",
     "diagram": "npm-run-all synth digram:generate",
@@ -32,8 +34,10 @@
     "aws-cdk-lib": "^2.213.0",
     "cdk-dia": "^0.12.0",
     "cdk-nextjs-standalone": "^4.3.0",
+    "constructs": "^10.4.2",
     "docker-compose-cdk": "^0.0.3",
     "npm-run-all": "^4.1.5",
+    "patch-package": "^8.0.0",
     "source-map-support": "^0.5.21",
     "tsx": "^4.20.5",
     "yaml": "^2.8.1"

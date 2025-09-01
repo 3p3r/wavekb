@@ -1,3 +1,6 @@
+networks:
+  localdockerstacknetwork:
+    driver: bridge
 services:
   postgreslocal:
     image: postgres:latest
@@ -17,6 +20,9 @@ services:
       - type: bind
         source: ../.postgres
         target: /var/lib/postgresql/data
+    networks:
+      localdockerstacknetwork:
+        alias: postgres
   nextjslocal:
     image: node:alpine
     user: "1000"
@@ -33,4 +39,7 @@ services:
       - type: bind
         source: ../app
         target: /app
-name: wavekb
+    networks:
+      localdockerstacknetwork:
+        alias: nextjs
+name: localdockerstackproject

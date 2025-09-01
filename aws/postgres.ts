@@ -1,17 +1,19 @@
 import { Stack } from "aws-cdk-lib";
+import { Service } from "docker-compose-cdk";
 import { CfnCluster } from "aws-cdk-lib/aws-dsql";
-import { Construct } from "constructs";
-import { type Project, Service } from "docker-compose-cdk";
 
-export interface PostgresProps {
-  dockerCompose?: Project;
-}
+import { FrameworkConstruct } from "./framework";
 
-export class Postgres extends Construct {
-  readonly endpoint: string;
+export class Postgres extends FrameworkConstruct {
+  readonly remoteEndpoint: string;
+  readonly localEndpoint: string;
   readonly region: string;
 
-  constructor(scope: Construct, id: string, props?: PostgresProps) {
+  static readonly LOCAL_POSTGRES_USER = "wavekb" as const;
+  static readonly LOCAL_POSTGRES_PASSWORD = "local" as const;
+  static readonly LOCAL_POSTGRES_DB = "wavekb-local" as const;
+
+  constructor(scope: FrameworkConstruct, id: string) {
     super(scope, id);
 
     const db = new CfnCluster(this, "DsqlCluster", {
@@ -21,41 +23,46 @@ export class Postgres extends Construct {
     const region = Stack.of(this).region;
     const endpoint = `${db.attrIdentifier}.dsql.${region}.on.aws`;
 
-    this.endpoint = endpoint;
+    this.remoteEndpoint = endpoint;
     this.region = region;
 
-    if (props?.dockerCompose) {
-      this.endpoint = this.addToDockerCompose(props.dockerCompose);
-    }
+    this.addToDockerCompose();
+
+    const pgEndpoint = `postgres://${Postgres.LOCAL_POSTGRES_USER}:${Postgres.LOCAL_POSTGRES_PASSWORD}@localhost/${Postgres.LOCAL_POSTGRES_DB}`;
+    this.localEndpoint = pgEndpoint;
   }
 
-  private addToDockerCompose(project: Project) {
-    const POSTGRES_USER = "wavekb";
-    const POSTGRES_PASSWORD = "local";
-    const POSTGRES_DB = "wavekb-local";
-    new Service(project, "PostgresLocal", {
+  addToDockerCompose() {
+    new Service(this.dockerProject, "PostgresLocal", {
       image: {
         image: "postgres",
-        tag: "latest"
+        tag: "latest",
       },
       environment: {
-        POSTGRES_DB,
-        POSTGRES_USER,
-        POSTGRES_PASSWORD,
-        POSTGRES_HOST_AUTH_METHOD: "trust"
+        POSTGRES_DB: Postgres.LOCAL_POSTGRES_DB,
+        POSTGRES_USER: Postgres.LOCAL_POSTGRES_USER,
+        POSTGRES_PASSWORD: Postgres.LOCAL_POSTGRES_PASSWORD,
+        POSTGRES_HOST_AUTH_METHOD: "trust",
       },
+      networks: [
+        {
+          network: this.dockerNetwork,
+          alias: "postgres",
+        },
+      ],
       command: "postgres",
-      ports: [{
-        container: 5432,
-        host: 5432
-      }],
-      volumes: [{
-        source: "../.postgres", // relative to docker compose location
-        target: "/var/lib/postgresql/data",
-      }]
+      ports: [
+        {
+          container: 5432,
+          host: 5432,
+        },
+      ],
+      volumes: [
+        {
+          source: "../.postgres", // relative to docker compose location
+          target: "/var/lib/postgresql/data",
+        },
+      ],
     });
-    // todo: use Networks for cross container communication
-    const endpoint = `postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost/${POSTGRES_DB}`;
-    return endpoint;
   }
 }
