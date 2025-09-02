@@ -29,6 +29,7 @@
   },
   "homepage": "https://github.com/3p3r/wavekb#readme",
   "devDependencies": {
+    "@types/debug": "^4.1.12",
     "@types/node": "^24.3.0",
     "aws-cdk": "^2.1027.0",
     "aws-cdk-lib": "^2.213.0",
@@ -41,5 +42,8 @@
     "source-map-support": "^0.5.21",
     "tsx": "^4.20.5",
     "yaml": "^2.8.1"
+  },
+  "dependencies": {
+    "debug": "^4.4.1"
   }
 }

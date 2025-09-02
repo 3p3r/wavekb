@@ -1,16 +1,29 @@
 import * as awsCdk from "aws-cdk-lib";
 import * as dockerComposeCdk from "docker-compose-cdk";
 import { stringify as YAMLStringify } from "yaml";
-import { Construct, IConstruct } from "constructs";
+import { Construct } from "constructs";
 
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+
+export enum FrameworkEnvironment {
+  Production = "production",
+  Development = "development",
+}
+
+export function getDefaultEnvironment(): FrameworkEnvironment {
+  return process.env.ENV?.toLowerCase().startsWith("prod")
+    ? FrameworkEnvironment.Production
+    : FrameworkEnvironment.Development;
+}
 
 export class FrameworkApp extends awsCdk.App {
   public readonly dockerCompose: dockerComposeCdk.App;
   public readonly dockerProject: dockerComposeCdk.Project;
   public readonly dockerNetwork: dockerComposeCdk.Network;
-  constructor() {
+  constructor(
+    public readonly env: FrameworkEnvironment = getDefaultEnvironment()
+  ) {
     super();
     this.dockerCompose = new dockerComposeCdk.App();
     this.dockerProject = new dockerComposeCdk.Project(
@@ -32,13 +45,22 @@ export class FrameworkApp extends awsCdk.App {
       "docker",
       "docker-compose.yml"
     );
-    writeFileSync(dockerComposePath, dockerComposeYAML);
+    writeFileSync(
+      dockerComposePath,
+      [
+        "# This file is auto-generated.",
+        "# Do not modify directly.",
+        "# ---",
+        dockerComposeYAML,
+      ].join("\n")
+    );
     this.synth();
   }
 }
 
 export class FrameworkStack extends awsCdk.Stack {
   public readonly frameworkApp: FrameworkApp;
+  public readonly frameworkEnv: FrameworkEnvironment;
   constructor(
     scope: FrameworkApp = new FrameworkApp(),
     id: string = "MainStack",
@@ -51,6 +73,7 @@ export class FrameworkStack extends awsCdk.Stack {
   ) {
     super(scope, id, opts);
     this.frameworkApp = scope;
+    this.frameworkEnv = scope.env;
   }
   public get dockerCompose(): dockerComposeCdk.App {
     return this.frameworkApp.dockerCompose;
@@ -82,5 +105,8 @@ export abstract class FrameworkConstruct extends Construct {
   }
   public get dockerProject() {
     return (awsCdk.Stack.of(this) as FrameworkStack).dockerProject;
+  }
+  public get frameworkEnv() {
+    return (awsCdk.Stack.of(this) as FrameworkStack).frameworkEnv;
   }
 }

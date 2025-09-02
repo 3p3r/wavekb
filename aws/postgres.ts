@@ -5,9 +5,11 @@ import { CfnCluster } from "aws-cdk-lib/aws-dsql";
 import { FrameworkConstruct } from "./framework";
 
 export class Postgres extends FrameworkConstruct {
-  readonly remoteEndpoint: string;
-  readonly localEndpoint: string;
+  readonly endpoint: string;
   readonly region: string;
+
+  private readonly _remoteEndpoint: string;
+  private readonly _localEndpoint: string;
 
   static readonly LOCAL_POSTGRES_USER = "wavekb" as const;
   static readonly LOCAL_POSTGRES_PASSWORD = "local" as const;
@@ -23,13 +25,19 @@ export class Postgres extends FrameworkConstruct {
     const region = Stack.of(this).region;
     const endpoint = `${db.attrIdentifier}.dsql.${region}.on.aws`;
 
-    this.remoteEndpoint = endpoint;
+    this._remoteEndpoint = endpoint;
     this.region = region;
 
     this.addToDockerCompose();
 
-    const pgEndpoint = `postgres://${Postgres.LOCAL_POSTGRES_USER}:${Postgres.LOCAL_POSTGRES_PASSWORD}@localhost/${Postgres.LOCAL_POSTGRES_DB}`;
-    this.localEndpoint = pgEndpoint;
+    const pgEndpoint = `postgres://${Postgres.LOCAL_POSTGRES_USER}:${Postgres.LOCAL_POSTGRES_PASSWORD}@postgres.local/${Postgres.LOCAL_POSTGRES_DB}`;
+    this._localEndpoint = pgEndpoint;
+
+    if (this.frameworkEnv === "development") {
+      this.endpoint = this._localEndpoint;
+    } else {
+      this.endpoint = this._remoteEndpoint;
+    }
   }
 
   addToDockerCompose() {
@@ -47,7 +55,7 @@ export class Postgres extends FrameworkConstruct {
       networks: [
         {
           network: this.dockerNetwork,
-          alias: "postgres",
+          aliases: ["postgres.local"],
         },
       ],
       command: "postgres",

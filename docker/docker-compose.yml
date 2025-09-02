@@ -1,3 +1,6 @@
+# This file is auto-generated.
+# Do not modify directly.
+# ---
 networks:
   localdockerstacknetwork:
     driver: bridge
@@ -22,7 +25,8 @@ services:
         target: /var/lib/postgresql/data
     networks:
       localdockerstacknetwork:
-        alias: postgres
+        aliases:
+          - postgres.local
   nextjslocal:
     image: node:alpine
     user: "1000"
@@ -33,6 +37,7 @@ services:
       replicas: 1
     environment:
       PORT: "4000"
+      POSTGRES_URL: postgres://wavekb:local@postgres.local/wavekb-local
     ports:
       - 4000:4000
     volumes:
@@ -41,5 +46,6 @@ services:
         target: /app
     networks:
       localdockerstacknetwork:
-        alias: nextjs
+        aliases:
+          - nextjs.local
 name: localdockerstackproject

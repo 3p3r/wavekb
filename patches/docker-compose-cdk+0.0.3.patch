@@ -1,32 +1,32 @@
 diff --git a/node_modules/docker-compose-cdk/lib/.types-compat/ts3.9/resources/service-props/network-selection.d.ts b/node_modules/docker-compose-cdk/lib/.types-compat/ts3.9/resources/service-props/network-selection.d.ts
-index 66d0a2f..b1b404d 100644
+index 66d0a2f..e0d4b17 100644
 --- a/node_modules/docker-compose-cdk/lib/.types-compat/ts3.9/resources/service-props/network-selection.d.ts
 +++ b/node_modules/docker-compose-cdk/lib/.types-compat/ts3.9/resources/service-props/network-selection.d.ts
 @@ -2,4 +2,5 @@ import type { INetwork } from '../network';
  export interface NetworkSelection {
      readonly network: INetwork;
      readonly ipV4Address?: string;
-+    readonly alias?: string;
++    readonly aliases?: string[];
  }
 diff --git a/node_modules/docker-compose-cdk/lib/resources/service-props/network-selection.d.ts b/node_modules/docker-compose-cdk/lib/resources/service-props/network-selection.d.ts
-index 59c2c1a..6f9ffc6 100644
+index 59c2c1a..9e16d0a 100644
 --- a/node_modules/docker-compose-cdk/lib/resources/service-props/network-selection.d.ts
 +++ b/node_modules/docker-compose-cdk/lib/resources/service-props/network-selection.d.ts
 @@ -2,4 +2,5 @@ import type { INetwork } from '../network';
  export interface NetworkSelection {
      readonly network: INetwork;
      readonly ipV4Address?: `${number}.${number}.${number}.${number}`;
-+    readonly alias?: string;
++    readonly aliases?: string[];
  }
 diff --git a/node_modules/docker-compose-cdk/lib/resources/service.js b/node_modules/docker-compose-cdk/lib/resources/service.js
-index 7b507a3..122fc95 100644
+index 7b507a3..a08daf3 100644
 --- a/node_modules/docker-compose-cdk/lib/resources/service.js
 +++ b/node_modules/docker-compose-cdk/lib/resources/service.js
 @@ -88,6 +88,7 @@ class Service extends ServiceBase {
                  return Object.assign(map, {
                      [mapping.network.name]: {
                          ipv4_address: mapping.ipV4Address,
-+                        alias: mapping.alias,
++                        aliases: mapping.aliases,
                      },
                  });
              }, {}),
