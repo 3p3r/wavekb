@@ -7,6 +7,7 @@ const DOCKER_DEV_PORT = 4000;
 
 export interface NextJSAppProps {
   readonly postgresUrl: string;
+  readonly queueUrl: string;
 }
 
 export class NextJSApp extends FrameworkConstruct {
@@ -24,6 +25,7 @@ export class NextJSApp extends FrameworkConstruct {
       // skipBuild: true, // <--- Uncomment this line to skip the build step
       environment: {
         POSTGRES_URL: this._props.postgresUrl,
+        QUEUE_URL: this._props.queueUrl,
       },
     });
     this.addToDockerCompose();

@@ -5,6 +5,18 @@ networks:
   localdockerstacknetwork:
     driver: bridge
 services:
+  queueservice:
+    image: vsouza/sqs-local:latest
+    privileged: false
+    deploy:
+      mode: replicated
+      replicas: 1
+    ports:
+      - 9324:9324
+    networks:
+      localdockerstacknetwork:
+        aliases:
+          - sqs.local
   postgreslocal:
     image: postgres:latest
     command: postgres
