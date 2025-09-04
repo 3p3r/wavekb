@@ -46,7 +46,7 @@ export class NextJSApp extends FrameworkConstruct {
         PORT: `${DOCKER_DEV_PORT}`,
         POSTGRES_URL: this._props.postgresUrl,
       },
-      command: "sh -c 'cd /app && npm install && npm run dev'",
+      command: "sh -c 'cd /app && npm run dev'",
       networks: [
         {
           network: this.dockerNetwork,
