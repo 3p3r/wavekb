@@ -17,6 +17,23 @@ services:
       localdockerstacknetwork:
         aliases:
           - sqs.local
+  storageservice:
+    image: minio/minio:latest
+    command: server /data
+    privileged: false
+    deploy:
+      mode: replicated
+      replicas: 1
+    ports:
+      - 9000:9000
+    volumes:
+      - type: bind
+        source: ../.s3
+        target: /data
+    networks:
+      localdockerstacknetwork:
+        aliases:
+          - s3.local
   postgreslocal:
     image: postgres:latest
     command: postgres
@@ -49,6 +66,8 @@ services:
       replicas: 1
     environment:
       PORT: "4000"
+      QUEUE_URL: http://sqs.local:9324
+      STORAGE_URL: http://s3.local:9000
       POSTGRES_URL: postgres://wavekb:local@postgres.local/wavekb-local
     ports:
       - 4000:4000

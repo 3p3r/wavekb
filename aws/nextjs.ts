@@ -7,6 +7,7 @@ const DOCKER_DEV_PORT = 4000;
 
 export interface NextJSAppProps {
   readonly postgresUrl: string;
+  readonly storageUrl: string;
   readonly queueUrl: string;
 }
 
@@ -46,6 +47,8 @@ export class NextJSApp extends FrameworkConstruct {
       user: process.getuid ? process.getuid().toString() : "1000",
       environment: {
         PORT: `${DOCKER_DEV_PORT}`,
+        QUEUE_URL: this._props.queueUrl,
+        STORAGE_URL: this._props.storageUrl,
         POSTGRES_URL: this._props.postgresUrl,
       },
       command: "sh -c 'cd /app && npm run dev'",
