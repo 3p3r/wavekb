@@ -1,8 +1,11 @@
+import assert from "node:assert";
 import { Stack } from "aws-cdk-lib";
 import { Service } from "docker-compose-cdk";
 import { CfnCluster } from "aws-cdk-lib/aws-dsql";
 
 import { FrameworkConstruct } from "./framework";
+
+let EXISTS = false;
 
 export class Postgres extends FrameworkConstruct {
   readonly endpoint: string;
@@ -17,6 +20,14 @@ export class Postgres extends FrameworkConstruct {
 
   constructor(scope: FrameworkConstruct, id: string) {
     super(scope, id);
+
+    EXISTS = !(assert(
+      !EXISTS,
+      [
+        "You reached the cap on this stack.",
+        "Only one Postgres database construct can be created!",
+      ].join(" ")
+    ) as unknown);
 
     const db = new CfnCluster(this, "DsqlCluster", {
       deletionProtectionEnabled: false,

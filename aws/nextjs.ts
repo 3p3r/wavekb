@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import { Nextjs } from "cdk-nextjs-standalone";
 import { Service } from "docker-compose-cdk";
 
@@ -11,6 +12,8 @@ export interface NextJSAppProps {
   readonly queueUrl: string;
 }
 
+let EXISTS = false;
+
 export class NextJSApp extends FrameworkConstruct {
   readonly nextjs: Nextjs;
   readonly appUrl: string;
@@ -21,6 +24,15 @@ export class NextJSApp extends FrameworkConstruct {
     private readonly _props: NextJSAppProps
   ) {
     super(scope, id);
+
+    EXISTS = !(assert(
+      !EXISTS,
+      [
+        "You reached the cap on this stack.",
+        "Only one NextJS app construct can be created!",
+      ].join(" ")
+    ) as unknown);
+
     this.nextjs = new Nextjs(this, "Nextjs", {
       nextjsPath: "app", // relative path from your project root to NextJS
       // skipBuild: true, // <--- Uncomment this line to skip the build step
