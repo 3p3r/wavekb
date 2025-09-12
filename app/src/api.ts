@@ -64,3 +64,10 @@ export const api = remultApi({
     return new SqlDatabase(new PostgresDataProvider(pool));
   },
 });
+
+// todo: disable in production
+export const openApiDoc = api.openApiDoc({
+  title: "WaveKB API",
+});
+
+export const { POST, PUT, DELETE, GET } = api;
