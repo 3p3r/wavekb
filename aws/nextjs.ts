@@ -37,8 +37,11 @@ export class NextJSApp extends FrameworkConstruct {
       nextjsPath: "app", // relative path from your project root to NextJS
       // skipBuild: true, // <--- Uncomment this line to skip the build step
       environment: {
+        FRAMEWORK_ENVIRONMENT: this.frameworkEnv,
         POSTGRES_URL: this._props.postgresUrl,
+        STORAGE_URL: this._props.storageUrl,
         QUEUE_URL: this._props.queueUrl,
+        DEBUG: "wavekb*",
       },
     });
     this.addToDockerCompose();
@@ -58,10 +61,12 @@ export class NextJSApp extends FrameworkConstruct {
       },
       user: process.getuid ? process.getuid().toString() : "1000",
       environment: {
+        DEBUG: "wavekb*",
         PORT: `${DOCKER_DEV_PORT}`,
         QUEUE_URL: this._props.queueUrl,
         STORAGE_URL: this._props.storageUrl,
         POSTGRES_URL: this._props.postgresUrl,
+        FRAMEWORK_ENVIRONMENT: this.frameworkEnv,
       },
       command: "sh -c 'cd /app && npm run dev'",
       networks: [

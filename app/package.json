@@ -9,7 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/dsql-signer": "^3.887.0",
+    "@types/pg": "^8.15.5",
+    "debug": "^4.4.1",
     "next": "15.5.2",
+    "pg": "^8.16.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "remult": "^3.2.1"

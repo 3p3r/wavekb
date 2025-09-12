@@ -75,10 +75,12 @@ services:
       mode: replicated
       replicas: 1
     environment:
+      DEBUG: wavekb*
       PORT: "4000"
       QUEUE_URL: http://sqs.local:9324/e6f21583
       STORAGE_URL: http://s3.local:9000/46b6c6fb
       POSTGRES_URL: postgres://wavekb:local@postgres.local/wavekb-local
+      FRAMEWORK_ENVIRONMENT: development
     ports:
       - 4000:4000
     volumes:
