@@ -7,7 +7,7 @@ networks:
 services:
   queueservice:
     image: softwaremill/elasticmq-native:latest
-    command: /bin/sh -c echo 'include
+    command: /bin/sh -c "echo 'include
       classpath(\"application.conf\")\n\nnode-address {\n    protocol =
       http\n    host = \"*\"\n    port = 9324\n    context-path =
       \"\"\n}\n\nrest-sqs {\n    enabled = true\n    bind-port =
@@ -15,7 +15,7 @@ services:
       strict\n}\n\nqueues {\n    e6f21583 {\n        defaultVisibilityTimeout =
       10 seconds\n        delay = 0 seconds\n        receiveMessageWait = 0
       seconds\n    }\n}' > /elastic.conf && java -Dconfig.file=/elastic.conf
-      -jar /opt/elasticmq-server.jar
+      -jar /opt/elasticmq-server.jar"
     privileged: false
     deploy:
       mode: replicated
@@ -29,6 +29,7 @@ services:
   storageservice:
     image: minio/minio:latest
     command: -c 'mkdir -p /data/46b6c6fb && /usr/bin/minio server /data'
+    entrypoint: /bin/sh
     privileged: false
     deploy:
       mode: replicated

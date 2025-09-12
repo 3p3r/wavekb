@@ -68,12 +68,12 @@ export class QueueService extends FrameworkConstruct {
       /<QUEUE_NAME>/g,
       this.localQueueName
     );
-    const escapedTemplate = JSON.stringify(template).slice(1, -1);
+    const escapedTemplate = JSON.stringify(template, null, 0).slice(1, -1);
     // write template into /custom.conf
     const command = [
       "/bin/sh",
       "-c",
-      `echo '${escapedTemplate}' > /elastic.conf && java -Dconfig.file=/elastic.conf -jar /opt/elasticmq-server.jar`,
+      `"echo '${escapedTemplate}' > /elastic.conf && java -Dconfig.file=/elastic.conf -jar /opt/elasticmq-server.jar"`,
     ].join(" ");
     new Service(this.dockerProject, "QueueService", {
       image: {

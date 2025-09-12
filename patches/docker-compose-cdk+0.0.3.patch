@@ -18,11 +18,47 @@ index 59c2c1a..9e16d0a 100644
      readonly ipV4Address?: `${number}.${number}.${number}.${number}`;
 +    readonly aliases?: string[];
  }
+diff --git a/node_modules/docker-compose-cdk/lib/resources/service.d.ts b/node_modules/docker-compose-cdk/lib/resources/service.d.ts
+index 8956bef..ab7be01 100644
+--- a/node_modules/docker-compose-cdk/lib/resources/service.d.ts
++++ b/node_modules/docker-compose-cdk/lib/resources/service.d.ts
+@@ -21,6 +21,7 @@ export interface ServiceProps {
+     readonly networks?: Array<NetworkSelection>;
+     readonly devices?: Array<DeviceMapping>;
+     readonly command?: string;
++    readonly entrypoint?: string;
+ }
+ export declare class Service extends ServiceBase {
+     readonly dnsNames: string[];
+@@ -36,6 +37,7 @@ export declare class Service extends ServiceBase {
+     readonly networks: Array<NetworkSelection> | undefined;
+     readonly devices: Array<DeviceMapping> | undefined;
+     readonly command: string | undefined;
++    readonly entrypoint: string | undefined;
+     readonly user: string | number | undefined;
+     constructor(scope: Construct, id: string, props: ServiceProps);
+     render(): object;
 diff --git a/node_modules/docker-compose-cdk/lib/resources/service.js b/node_modules/docker-compose-cdk/lib/resources/service.js
-index 7b507a3..a08daf3 100644
+index 7b507a3..11c5d77 100644
 --- a/node_modules/docker-compose-cdk/lib/resources/service.js
 +++ b/node_modules/docker-compose-cdk/lib/resources/service.js
-@@ -88,6 +88,7 @@ class Service extends ServiceBase {
+@@ -43,6 +43,7 @@ class Service extends ServiceBase {
+         }));
+         this.devices = props.devices;
+         this.command = props.command;
++        this.entrypoint = props.entrypoint;
+         this.user = props.user;
+     }
+     render() {
+@@ -51,6 +52,7 @@ class Service extends ServiceBase {
+             image: [this.image.image, this.image.tag ?? 'latest'].join(':'),
+             user: this.user,
+             command: this.command,
++            entrypoint: this.entrypoint,
+             privileged: this.privileged ?? false,
+             restart: this.restart,
+             deploy: {
+@@ -88,6 +90,7 @@ class Service extends ServiceBase {
                  return Object.assign(map, {
                      [mapping.network.name]: {
                          ipv4_address: mapping.ipV4Address,

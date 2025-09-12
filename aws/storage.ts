@@ -58,6 +58,7 @@ export class StorageService extends FrameworkConstruct {
           aliases: ["s3.local"],
         },
       ],
+      entrypoint: "/bin/sh",
       command: `-c 'mkdir -p /data/${this.localBucketName} && /usr/bin/minio server /data'`,
       volumes: [
         {
