@@ -91,7 +91,7 @@ export const remultDataProvider = (
 };
 
 export const generateFilter = (filters?: CrudFilters) => {
-  let where: EntityFilter<any> = {};
+  const where: EntityFilter<any> = {};
   if (filters)
     for (const filter of filters) {
       const lf = filter as LogicalFilter;
