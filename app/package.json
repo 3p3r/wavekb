@@ -3,33 +3,41 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@ant-design/icons": "^5.6.1",
     "@aws-sdk/dsql-signer": "^3.887.0",
+    "@refinedev/antd": "^6.0.1",
+    "@refinedev/cli": "^2.16.48",
+    "@refinedev/core": "^5.0.1",
+    "@refinedev/inferencer": "^6.0.1",
+    "@refinedev/kbar": "^2.0.0",
+    "@refinedev/nextjs-router": "^7.0.0",
+    "antd": "^5.27.3",
     "debug": "^4.4.1",
-    "next": "15.5.2",
+    "next": "^15.5.2",
+    "nookies": "^2.5.2",
     "pg": "^8.16.3",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react-live": "^4.1.8",
     "remult": "^3.2.1",
     "swagger-ui-react": "^5.29.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@opennextjs/aws": "^3.7.5",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.19.15",
     "@types/pg": "^8.15.5",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
     "@types/swagger-ui-react": "^5.18.0",
+    "@typescript-eslint/parser": "^8.44.0",
+    "cross-env": "^10.0.0",
     "eslint": "^9",
-    "eslint-config-next": "15.5.2",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "eslint-config-next": "^15.5.2",
+    "typescript": "^5.9.2"
   }
 }
