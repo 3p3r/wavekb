@@ -44,7 +44,7 @@ export class NextJSApp extends FrameworkConstruct {
         DEBUG: "wavekb*",
       },
     });
-    this.addToDockerCompose();
+    this.service = this.addToDockerCompose();
 
     if (this.frameworkEnv === "development") {
       this.appUrl = `http://nextjs.local:${DOCKER_DEV_PORT}`;
@@ -54,7 +54,7 @@ export class NextJSApp extends FrameworkConstruct {
   }
 
   addToDockerCompose() {
-    new Service(this.dockerProject, "NextjsLocal", {
+    return new Service(this.dockerProject, "NextjsLocal", {
       image: {
         image: "node",
         tag: "alpine",
@@ -87,6 +87,15 @@ export class NextJSApp extends FrameworkConstruct {
           target: "/app",
         },
       ],
+      healthCheck: {
+        test: [
+          "CMD-SHELL",
+          `curl --fail http://localhost:${DOCKER_DEV_PORT}/api/healthcheck || exit 1`,
+        ],
+        interval: "10s",
+        timeout: "5s",
+        retries: 5,
+      },
     });
   }
 }

@@ -4,10 +4,7 @@ import { Service } from "docker-compose-cdk";
 import { createHash } from "node:crypto";
 
 import { FrameworkConstruct } from "./framework";
-
-function smallHash(input: string): string {
-  return createHash("sha256").update(input).digest("hex").slice(0, 8);
-}
+import { smallHash } from "./common";
 
 const ALL_PORTS = new Map<string, number>();
 const ELASTICMQ_CONFIG_TEMPLATE = `
@@ -53,7 +50,7 @@ export class QueueService extends FrameworkConstruct {
         maxLength: 63,
       })
     );
-    this.addToDockerCompose();
+    this.service = this.addToDockerCompose();
     this.remoteQueueUrl = q.queueArn;
     this.localQueueUrl = `http://sqs.local:${this.localQueuePort}/${this.localQueueName}`;
     this.queueUrl =
@@ -75,7 +72,7 @@ export class QueueService extends FrameworkConstruct {
       "-c",
       `"echo '${escapedTemplate}' > /elastic.conf && java -Dconfig.file=/elastic.conf -jar /opt/elasticmq-server.jar"`,
     ].join(" ");
-    new Service(this.dockerProject, "QueueService", {
+    return new Service(this.dockerProject, "QueueService", {
       image: {
         image: "softwaremill/elasticmq-native",
         tag: "latest",

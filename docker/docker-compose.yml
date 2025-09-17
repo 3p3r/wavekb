@@ -66,6 +66,29 @@ services:
       localdockerstacknetwork:
         aliases:
           - postgres.local
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U wavekb
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  triggerscript:
+    working_dir: /c5f2eb21
+    image: node:alpine
+    command: -e 'require("./index.ts").handler()'
+    privileged: false
+    restart: no
+    deploy:
+      mode: replicated
+      replicas: 1
+    volumes:
+      - type: bind
+        source: ../triggers/seed
+        target: /c5f2eb21
+    depends_on:
+      postgreslocal:
+        condition: service_healthy
   nextjslocal:
     image: node:alpine
     user: "1000"
@@ -91,4 +114,14 @@ services:
       localdockerstacknetwork:
         aliases:
           - nextjs.local
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl --fail http://localhost:4000/api/healthcheck || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      triggerscript:
+        condition: service_completed_successfully
 name: localdockerstackproject

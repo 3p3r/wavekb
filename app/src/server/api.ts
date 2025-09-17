@@ -19,7 +19,6 @@ if (!DEVELOPMENT && process.env.PORT) {
 
 export const api = remultNext({
   entities,
-  admin: true, // todo: disable in production
   dataProvider: async () => {
     let pool: Pool;
     const max = 20;

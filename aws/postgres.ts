@@ -39,7 +39,7 @@ export class Postgres extends FrameworkConstruct {
     this._remoteEndpoint = endpoint;
     this.region = region;
 
-    this.addToDockerCompose();
+    this.service = this.addToDockerCompose();
 
     const pgEndpoint = `postgres://${Postgres.LOCAL_POSTGRES_USER}:${Postgres.LOCAL_POSTGRES_PASSWORD}@postgres.local/${Postgres.LOCAL_POSTGRES_DB}`;
     this._localEndpoint = pgEndpoint;
@@ -52,7 +52,7 @@ export class Postgres extends FrameworkConstruct {
   }
 
   addToDockerCompose() {
-    new Service(this.dockerProject, "PostgresLocal", {
+    return new Service(this.dockerProject, "PostgresLocal", {
       image: {
         image: "postgres",
         tag: "latest",
@@ -82,6 +82,12 @@ export class Postgres extends FrameworkConstruct {
           target: "/var/lib/postgresql/data",
         },
       ],
+      healthCheck: {
+        test: ["CMD-SHELL", `pg_isready -U ${Postgres.LOCAL_POSTGRES_USER}`],
+        interval: "10s",
+        timeout: "5s",
+        retries: 5,
+      },
     });
   }
 }

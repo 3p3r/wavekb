@@ -19,38 +19,97 @@ index 59c2c1a..9e16d0a 100644
 +    readonly aliases?: string[];
  }
 diff --git a/node_modules/docker-compose-cdk/lib/resources/service.d.ts b/node_modules/docker-compose-cdk/lib/resources/service.d.ts
-index 8956bef..ab7be01 100644
+index 8956bef..8c82422 100644
 --- a/node_modules/docker-compose-cdk/lib/resources/service.d.ts
 +++ b/node_modules/docker-compose-cdk/lib/resources/service.d.ts
-@@ -21,6 +21,7 @@ export interface ServiceProps {
+@@ -7,6 +7,24 @@ export declare abstract class ServiceBase extends Resource implements IService {
+     abstract readonly dnsNames: string[];
+     protected constructor(scope: Construct, id: string, props?: ResourceOptions);
+ }
++export interface HealthCheck {
++    readonly test: string[];
++    readonly interval?: string;
++    readonly timeout?: string;
++    readonly retries?: number;
++    readonly startPeriod?: string;
++    readonly startInterval?: string;
++    readonly disable?: boolean;
++}
++export interface DisabledHealthCheck {
++    readonly disable?: boolean;
++}
++export type DependencyCondition = 'service_started' | 'service_healthy' | 'service_completed_successfully';
++export interface Dependency {
++    readonly [serviceName: string]: {
++        readonly condition: DependencyCondition;
++    };
++}
+ export interface ServiceProps {
+     readonly disabled?: boolean;
+     readonly image: IDockerImage;
+@@ -21,6 +39,10 @@ export interface ServiceProps {
      readonly networks?: Array<NetworkSelection>;
      readonly devices?: Array<DeviceMapping>;
      readonly command?: string;
 +    readonly entrypoint?: string;
++    readonly healthCheck?: HealthCheck | DisabledHealthCheck | string;
++    readonly dependsOn?: Dependency;
++    readonly workingDir?: string;
  }
  export declare class Service extends ServiceBase {
      readonly dnsNames: string[];
-@@ -36,6 +37,7 @@ export declare class Service extends ServiceBase {
+@@ -36,7 +58,12 @@ export declare class Service extends ServiceBase {
      readonly networks: Array<NetworkSelection> | undefined;
      readonly devices: Array<DeviceMapping> | undefined;
      readonly command: string | undefined;
 +    readonly entrypoint: string | undefined;
      readonly user: string | number | undefined;
++    readonly healthCheck: HealthCheck | undefined;
++    readonly dependsOn: Dependency | undefined;
++    readonly workingDir: string | undefined;
      constructor(scope: Construct, id: string, props: ServiceProps);
++    addDependency(service: Service, condition?: DependencyCondition): void;
      render(): object;
+ }
 diff --git a/node_modules/docker-compose-cdk/lib/resources/service.js b/node_modules/docker-compose-cdk/lib/resources/service.js
-index 7b507a3..11c5d77 100644
+index 7b507a3..2320698 100644
 --- a/node_modules/docker-compose-cdk/lib/resources/service.js
 +++ b/node_modules/docker-compose-cdk/lib/resources/service.js
-@@ -43,6 +43,7 @@ class Service extends ServiceBase {
+@@ -19,6 +19,7 @@ ServiceBase[_a] = { fqn: "docker-compose-cdk.ServiceBase", version: "0.0.3" };
+ class Service extends ServiceBase {
+     constructor(scope, id, props) {
+         super(scope, id);
++        this.workingDir = props.workingDir;
+         this.disabled = props.disabled ?? false;
+         this.image = props.image;
+         this.restart = props.restart;
+@@ -43,14 +44,33 @@ class Service extends ServiceBase {
          }));
          this.devices = props.devices;
          this.command = props.command;
 +        this.entrypoint = props.entrypoint;
          this.user = props.user;
++        if (props.healthCheck !== undefined) {
++            const healthCheck = typeof props.healthCheck === 'string'
++                ? { test: props.healthCheck }
++                : props.healthCheck;
++            this.healthCheck = healthCheck;
++        }
++        if (props.dependsOn !== undefined) {
++            this.dependsOn = props.dependsOn;
++        }
++    }
++    addDependency(service, condition = 'service_started') {
++        if (this.dependsOn === undefined) {
++            this.dependsOn = {};
++        }
++        const otherServiceName = service.node.host.name;
++        this.dependsOn[otherServiceName] = { condition };
      }
      render() {
-@@ -51,6 +52,7 @@ class Service extends ServiceBase {
+         return {
++            working_dir: this.workingDir,
+             profiles: this.disabled ? ['disabled'] : undefined,
              image: [this.image.image, this.image.tag ?? 'latest'].join(':'),
              user: this.user,
              command: this.command,
@@ -58,7 +117,7 @@ index 7b507a3..11c5d77 100644
              privileged: this.privileged ?? false,
              restart: this.restart,
              deploy: {
-@@ -88,6 +90,7 @@ class Service extends ServiceBase {
+@@ -88,12 +108,22 @@ class Service extends ServiceBase {
                  return Object.assign(map, {
                      [mapping.network.name]: {
                          ipv4_address: mapping.ipV4Address,
@@ -66,3 +125,18 @@ index 7b507a3..11c5d77 100644
                      },
                  });
              }, {}),
+             devices: this.devices?.map(mapping => {
+                 return [mapping.source, mapping.target].join(':');
+             }),
++            healthcheck: this.healthCheck === undefined ? undefined : (this.healthCheck === 'disabled' ? 'disabled' : {
++                test: this.healthCheck.test,
++                interval: this.healthCheck.interval,
++                timeout: this.healthCheck.timeout,
++                retries: this.healthCheck.retries,
++                start_period: this.healthCheck.startPeriod,
++                start_interval: this.healthCheck.startInterval,
++            }),
++            depends_on: this.dependsOn,
+         };
+     }
+ }
