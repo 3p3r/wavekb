@@ -41,9 +41,12 @@ export class StorageService extends FrameworkConstruct {
     const id = smallHash(this.node.id);
     return new Service(this.dockerProject, `StorageBucket${id}`, {
       image: {
-        // minioadmin / minioadmin is auth
         image: "minio/minio",
         tag: "latest",
+      },
+      environment: {
+        MINIO_ROOT_USER: "test",
+        MINIO_ROOT_PASSWORD: "test",
       },
       ports: [
         {

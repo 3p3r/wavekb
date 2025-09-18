@@ -34,6 +34,9 @@ services:
     deploy:
       mode: replicated
       replicas: 1
+    environment:
+      MINIO_ROOT_USER: test
+      MINIO_ROOT_PASSWORD: test
     ports:
       - 9000:9000
     volumes:
