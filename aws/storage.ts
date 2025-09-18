@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { resolve } from "node:path";
+
 import { Names } from "aws-cdk-lib";
 import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Service } from "docker-compose-cdk";
@@ -17,7 +18,7 @@ export class StorageService extends FrameworkConstruct {
 
   constructor(scope: FrameworkConstruct, id: string) {
     super(scope, id);
-    const bucket = new Bucket(this, "StorageBucket");
+    const bucket = new Bucket(this, `StorageBucket${smallHash(id)}`);
     this.localBucketPort = ALL_PORTS.size + 9000;
     this.localBucketName = smallHash(
       Names.uniqueResourceName(this, {
@@ -37,7 +38,8 @@ export class StorageService extends FrameworkConstruct {
   }
 
   addToDockerCompose() {
-    return new Service(this.dockerProject, "StorageService", {
+    const id = smallHash(this.node.id);
+    return new Service(this.dockerProject, `StorageBucket${id}`, {
       image: {
         // minioadmin / minioadmin is auth
         image: "minio/minio",
@@ -59,7 +61,9 @@ export class StorageService extends FrameworkConstruct {
       command: `-c 'mkdir -p /data/${this.localBucketName} && /usr/bin/minio server /data'`,
       volumes: [
         {
-          source: "../.s3", // relative to docker compose location
+          source: this.frameworkApp.toDockerVolumeSourcePath(
+            resolve(__dirname, "..", ".s3", this.localBucketName)
+          ),
           target: "/data",
         },
       ],

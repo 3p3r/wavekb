@@ -1,4 +1,6 @@
 import assert from "node:assert";
+import { resolve } from "node:path";
+
 import { Nextjs } from "cdk-nextjs-standalone";
 import { Service } from "docker-compose-cdk";
 
@@ -35,7 +37,7 @@ export class NextJSApp extends FrameworkConstruct {
 
     this.nextjs = new Nextjs(this, "Nextjs", {
       nextjsPath: "app", // relative path from your project root to NextJS
-      // skipBuild: true, // <--- Uncomment this line to skip the build step
+      skipBuild: true, // <--- Uncomment this line to skip the build step
       environment: {
         FRAMEWORK_ENVIRONMENT: this.frameworkEnv,
         POSTGRES_URL: this._props.postgresUrl,
@@ -83,7 +85,9 @@ export class NextJSApp extends FrameworkConstruct {
       ],
       volumes: [
         {
-          source: "../app", // relative to docker compose location
+          source: this.frameworkApp.toDockerVolumeSourcePath(
+            resolve(__dirname, "..", "app")
+          ),
           target: "/app",
         },
       ],

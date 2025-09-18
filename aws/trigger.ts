@@ -22,12 +22,12 @@ export class TriggerScript extends FrameworkConstruct {
     private readonly props: TriggerScriptProps
   ) {
     super(scope, id);
-    const fn = new NodejsFunction(this, "TriggerFunction", {
+    const fn = new NodejsFunction(this, `TriggerFunction${smallHash(id)}`, {
       handler: "index.handler",
       runtime: Runtime.NODEJS_22_X,
       code: Code.fromAsset(props.path),
     });
-    this.trigger = new Trigger(this, "Trigger", {
+    this.trigger = new Trigger(this, `Trigger${smallHash(id)}`, {
       handler: fn,
       invocationType: InvocationType.REQUEST_RESPONSE,
     });
@@ -44,13 +44,17 @@ export class TriggerScript extends FrameworkConstruct {
     this.trigger.executeBefore(construct);
     assert(this.service, "This construct has no service");
     assert(construct.service, "Other construct has no service");
-    construct.service.addDependency(this.service, "service_completed_successfully");
+    construct.service.addDependency(
+      this.service,
+      "service_completed_successfully"
+    );
   }
 
   addToDockerCompose(): Service {
     const scriptDir = resolve(this.props.path);
     const pathHash = smallHash(scriptDir);
-    return new Service(this.dockerProject, "TriggerScript", {
+    const id = smallHash(this.node.id);
+    return new Service(this.dockerProject, `TriggerScript${id}`, {
       image: {
         image: "node",
         tag: "alpine",

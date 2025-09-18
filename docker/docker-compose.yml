@@ -5,7 +5,7 @@ networks:
   localdockerstacknetwork:
     driver: bridge
 services:
-  queueservice:
+  queueservice819a1fca:
     image: softwaremill/elasticmq-native:latest
     command: /bin/sh -c "echo 'include
       classpath(\"application.conf\")\n\nnode-address {\n    protocol =
@@ -26,7 +26,7 @@ services:
       localdockerstacknetwork:
         aliases:
           - sqs.local
-  storageservice:
+  storagebucketa8622c71:
     image: minio/minio:latest
     command: -c 'mkdir -p /data/46b6c6fb && /usr/bin/minio server /data'
     entrypoint: /bin/sh
@@ -38,7 +38,7 @@ services:
       - 9000:9000
     volumes:
       - type: bind
-        source: ../.s3
+        source: ../.s3/46b6c6fb
         target: /data
     networks:
       localdockerstacknetwork:
@@ -73,7 +73,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-  triggerscript:
+  triggerscript4f77d86b:
     working_dir: /c5f2eb21
     image: node:alpine
     command: -e 'require("./index.ts").handler()'
@@ -122,6 +122,6 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
-      triggerscript:
+      triggerscript4f77d86b:
         condition: service_completed_successfully
 name: localdockerstackproject

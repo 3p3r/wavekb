@@ -41,7 +41,7 @@ export class QueueService extends FrameworkConstruct {
 
   constructor(scope: FrameworkConstruct, id: string) {
     super(scope, id);
-    const q = new Queue(this, "Queue");
+    const q = new Queue(this, `Queue${smallHash(id)}`);
     this.localQueuePort = ALL_PORTS.size + 9324;
     this.localQueueName = smallHash(
       Names.uniqueResourceName(this, {
@@ -72,7 +72,8 @@ export class QueueService extends FrameworkConstruct {
       "-c",
       `"echo '${escapedTemplate}' > /elastic.conf && java -Dconfig.file=/elastic.conf -jar /opt/elasticmq-server.jar"`,
     ].join(" ");
-    return new Service(this.dockerProject, "QueueService", {
+    const id = smallHash(this.node.id);
+    return new Service(this.dockerProject, `QueueService${id}`, {
       image: {
         image: "softwaremill/elasticmq-native",
         tag: "latest",

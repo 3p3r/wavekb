@@ -1,4 +1,6 @@
 import assert from "node:assert";
+import { resolve } from "node:path";
+
 import { Stack } from "aws-cdk-lib";
 import { Service } from "docker-compose-cdk";
 import { CfnCluster } from "aws-cdk-lib/aws-dsql";
@@ -78,7 +80,9 @@ export class Postgres extends FrameworkConstruct {
       ],
       volumes: [
         {
-          source: "../.postgres", // relative to docker compose location
+          source: this.frameworkApp.toDockerVolumeSourcePath(
+            resolve(__dirname, "..", ".postgres")
+          ),
           target: "/var/lib/postgresql/data",
         },
       ],
