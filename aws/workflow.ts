@@ -1,35 +1,39 @@
 import {
   Pass,
+  StateGraph,
   StateMachine,
   DefinitionBody,
   Chain,
+  QueryLanguage,
 } from "aws-cdk-lib/aws-stepfunctions";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import { Service } from "docker-compose-cdk";
+import { Code, Runtime } from "aws-cdk-lib/aws-lambda";
+import { RestartPolicy, Service } from "docker-compose-cdk";
+import { Stack } from "aws-cdk-lib";
 
 import { resolve } from "node:path";
 
 import { FrameworkConstruct, FrameworkSingleton } from "./framework";
-import { smallHash } from "./common";
-import { Stack } from "aws-cdk-lib";
-import { Code, Runtime } from "aws-cdk-lib/aws-lambda";
+import {
+  LOCAL_AWS_ACCESS_KEY_ID,
+  LOCAL_AWS_REGION,
+  LOCAL_AWS_SECRET_ACCESS_KEY,
+  smallHash,
+} from "./common";
 
 export interface WorkflowProps {
   readonly path: string;
 }
 
 export class Workflow extends FrameworkConstruct {
-  readonly stateMachine: StateMachine;
-  readonly definition: Chain;
+  readonly stateGraph: StateGraph;
   constructor(scope: FrameworkConstruct, id: string) {
     super(scope, id);
     const passState = new Pass(this, `Pass${smallHash(id)}`);
-    const nextState = new Pass(this, `Next${smallHash(id)}`);
-    this.definition = passState.next(nextState);
-    const definitionBody = DefinitionBody.fromChainable(this.definition);
-    this.stateMachine = new StateMachine(this, `StateMachine${smallHash(id)}`, {
+    this.stateGraph = new StateGraph(passState, `StateGraph${smallHash(id)}`);
+    new StateMachine(this, `StateMachine${smallHash(id)}`, {
+      definitionBody: DefinitionBody.fromString(this.stateGraph.toString()),
       stateMachineName: `StateMachine${smallHash(id)}`,
-      definitionBody,
     });
     this.service = this.addToDockerCompose();
   }
@@ -37,9 +41,9 @@ export class Workflow extends FrameworkConstruct {
     // local emulators
     const lse = new LambdaServerEmulator(this, "LambdaServerEmulator");
     const sfe = new StepFunctionEmulator(this, "StepFunctionEmulator");
-    // sfe.getServiceOrThrow().addDependency(lse.getServiceOrThrow());
+    sfe.getServiceOrThrow().addDependency(lse.getServiceOrThrow());
     const id = smallHash(this.node.id);
-    const stateJson = this.definition.startState.toStateJson();
+    const stateJson = this.stateGraph.toGraphJson(QueryLanguage.JSON_PATH);
     const definitionString = JSON.stringify(stateJson);
     const service = new Service(
       this.dockerProject,
@@ -49,20 +53,21 @@ export class Workflow extends FrameworkConstruct {
           image: "amazon/aws-cli",
         },
         environment: {
-          AWS_ACCESS_KEY_ID: "test",
-          AWS_SECRET_ACCESS_KEY: "test",
-          AWS_REGION: "us-east-1",
+          AWS_ACCESS_KEY_ID: LOCAL_AWS_ACCESS_KEY_ID,
+          AWS_SECRET_ACCESS_KEY: LOCAL_AWS_SECRET_ACCESS_KEY,
+          AWS_REGION: LOCAL_AWS_REGION,
         },
         networks: [
           {
             network: this.dockerNetwork,
-            aliases: ["stepfunctions.local"],
+            aliases: [`stepfunctions.local.${id}`],
           },
         ],
+        restart: RestartPolicy.NO,
         command: `stepfunctions create-state-machine --endpoint-url http://stepfunctions.local:8083 --region us-east-1 --definition '${definitionString}' --name StateMachine${id} --role-arn arn:aws:iam::123456789012:role/DummyRole`,
       }
     );
-    service.addDependency(sfe.getServiceOrThrow());
+    service.addDependency(sfe.getServiceOrThrow(), "service_healthy");
     return service;
   }
 }
@@ -86,15 +91,24 @@ export class StepFunctionEmulator extends FrameworkSingleton {
           host: 8083,
         },
       ],
+      networks: [
+        {
+          network: this.dockerNetwork,
+          aliases: ["stepfunctions.local"],
+        },
+      ],
       environment: {
-        AWS_ACCESS_KEY_ID: "test",
-        AWS_SECRET_ACCESS_KEY: "test",
-        AWS_REGION: "us-east-1",
+        AWS_ACCESS_KEY_ID: LOCAL_AWS_ACCESS_KEY_ID,
+        AWS_SECRET_ACCESS_KEY: LOCAL_AWS_SECRET_ACCESS_KEY,
+        AWS_REGION: LOCAL_AWS_REGION,
         LAMBDA_ENDPOINT: "http://lambda.local:3001",
-        // SQS_ENDPOINT: "http://elasticmq:9324",
+        // SQS_ENDPOINT: "http://elasticmq:9324", // todo
       },
       healthCheck: {
-        test: ["CMD-SHELL", "curl -f http://localhost:8083 || exit 1"],
+        test: [
+          "CMD-SHELL",
+          "curl -X POST -H 'x-amz-target: AWSStepFunctions.ListStateMachines' http://stepfunctions.local:8083 || exit 1",
+        ],
         interval: "10s",
         timeout: "5s",
         retries: 5,
@@ -129,9 +143,10 @@ export class LambdaServerEmulator extends FrameworkSingleton {
         Stack.of(this).stackName
       }.template.json --host 0.0.0.0 --port 3001`,
       environment: {
-        AWS_ACCESS_KEY_ID: "test",
-        AWS_SECRET_ACCESS_KEY: "test",
-        AWS_REGION: "us-east-1",
+        SAM_CLI_TELEMETRY: "0",
+        AWS_ACCESS_KEY_ID: LOCAL_AWS_ACCESS_KEY_ID,
+        AWS_SECRET_ACCESS_KEY: LOCAL_AWS_SECRET_ACCESS_KEY,
+        AWS_REGION: LOCAL_AWS_REGION,
       },
       workingDir: "/app",
       volumes: [

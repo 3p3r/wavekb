@@ -30,11 +30,11 @@ const nextjsApp = new NextJSApp(stack, "NextJSApp", {
 seeder.executeAfter(postgres);
 seeder.executeBefore(nextjsApp);
 
-workflow.getServiceOrThrow().addDependency(postgres.getServiceOrThrow());
-workflow.getServiceOrThrow().addDependency(queue.getServiceOrThrow());
-workflow.getServiceOrThrow().addDependency(storage.getServiceOrThrow());
+workflow.getServiceOrThrow().addDependency(postgres.getServiceOrThrow(), "service_healthy");
+workflow.getServiceOrThrow().addDependency(queue.getServiceOrThrow(), "service_started");
+workflow.getServiceOrThrow().addDependency(storage.getServiceOrThrow(), "service_started");
 
-nextjsApp.getServiceOrThrow().addDependency(workflow.getServiceOrThrow());
+nextjsApp.getServiceOrThrow().addDependency(workflow.getServiceOrThrow(), "service_started");
 
 stack.frameworkApp.synthesize();
 

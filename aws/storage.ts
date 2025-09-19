@@ -5,7 +5,11 @@ import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Service } from "docker-compose-cdk";
 
 import { FrameworkConstruct } from "./framework";
-import { smallHash } from "./common";
+import {
+  LOCAL_AWS_ACCESS_KEY_ID,
+  LOCAL_AWS_SECRET_ACCESS_KEY,
+  smallHash,
+} from "./common";
 
 const ALL_PORTS = new Map<string, number>();
 
@@ -45,8 +49,8 @@ export class StorageService extends FrameworkConstruct {
         tag: "latest",
       },
       environment: {
-        MINIO_ROOT_USER: "test",
-        MINIO_ROOT_PASSWORD: "test",
+        MINIO_ROOT_USER: LOCAL_AWS_ACCESS_KEY_ID,
+        MINIO_ROOT_PASSWORD: LOCAL_AWS_SECRET_ACCESS_KEY,
       },
       ports: [
         {
