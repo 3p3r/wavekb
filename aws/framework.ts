@@ -93,6 +93,9 @@ export class FrameworkStack extends awsCdk.Stack {
   addToDockerCompose(): dockerComposeCdk.Service {
     assert(false, "addToDockerCompose is not available at stack level");
   }
+  public getServiceOrThrow(): dockerComposeCdk.Service {
+    assert(false, "getServiceOrThrow is not available at stack level");
+  }
 }
 
 export abstract class FrameworkConstruct extends Construct {
@@ -118,5 +121,32 @@ export abstract class FrameworkConstruct extends Construct {
   }
   public get frameworkApp() {
     return (awsCdk.Stack.of(this) as FrameworkStack).frameworkApp;
+  }
+  public getServiceOrThrow(): dockerComposeCdk.Service {
+    assert(this.service, "Service not initialized yet");
+    return this.service;
+  }
+}
+
+export abstract class FrameworkSingleton extends FrameworkConstruct {
+  constructor(scope: FrameworkConstruct | FrameworkStack, id: string) {
+    super(scope, id);
+    // todo: improve this to check for props equality
+    const existing = FrameworkSingleton.getInstanceInScope(scope, id);
+    if (existing) {
+      return existing;
+    }
+  }
+  public static getInstanceInScope(
+    scope: FrameworkConstruct | FrameworkStack,
+    id: string
+  ): FrameworkSingleton | null {
+    const stack = awsCdk.Stack.of(scope) as FrameworkStack;
+    stack.node.children.forEach((child) => {
+      if (child instanceof FrameworkSingleton && child.node.id === id) {
+        return child;
+      }
+    });
+    return null;
   }
 }

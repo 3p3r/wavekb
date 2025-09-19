@@ -1,7 +1,6 @@
 import { Names } from "aws-cdk-lib";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Service } from "docker-compose-cdk";
-import { createHash } from "node:crypto";
 
 import { FrameworkConstruct } from "./framework";
 import { smallHash } from "./common";
