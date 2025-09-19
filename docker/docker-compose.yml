@@ -102,6 +102,21 @@ services:
       localdockerstacknetwork:
         aliases:
           - lambda.local
+    healthcheck:
+      test:
+        - CMD
+        - sam
+        - local
+        - invoke
+        - LocalHealthCheck
+        - --event
+        - "{}"
+        - --endpoint-url
+        - http://lambda.local:3001
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
   stepfunctionsemulator:
     image: amazon/aws-stepfunctions-local:latest
     privileged: false
@@ -151,7 +166,7 @@ services:
       storagebucketa8622c71:
         condition: service_started
   triggerscript4f77d86b:
-    working_dir: /c5f2eb21
+    working_dir: /b635197f
     image: node:alpine
     command: -e 'require("./index.ts").handler()'
     privileged: false
@@ -161,8 +176,8 @@ services:
       replicas: 1
     volumes:
       - type: bind
-        source: ../triggers/seed
-        target: /c5f2eb21
+        source: ../lambdas/seed
+        target: /b635197f
     depends_on:
       postgreslocal:
         condition: service_healthy

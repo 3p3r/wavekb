@@ -4,6 +4,7 @@ import {
   DefinitionBody,
   Chain,
 } from "aws-cdk-lib/aws-stepfunctions";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Service } from "docker-compose-cdk";
 
 import { resolve } from "node:path";
@@ -11,6 +12,7 @@ import { resolve } from "node:path";
 import { FrameworkConstruct, FrameworkSingleton } from "./framework";
 import { smallHash } from "./common";
 import { Stack } from "aws-cdk-lib";
+import { Code, Runtime } from "aws-cdk-lib/aws-lambda";
 
 export interface WorkflowProps {
   readonly path: string;
@@ -108,10 +110,17 @@ export class LambdaServerEmulator extends FrameworkSingleton {
     // todo: better abstraction for singleton
     const existing = FrameworkSingleton.getInstanceInScope(scope, id);
     if (existing) return existing;
-    // todo: healthcheck
     this.service = this.addToDockerCompose();
   }
   addToDockerCompose(): Service {
+    const functionName = `LocalHealthCheck`;
+    new NodejsFunction(this, "LocalHealthCheck", {
+      code: Code.fromAsset(resolve(__dirname, "../lambdas/health")),
+      entry: resolve(__dirname, "../lambdas/health/index.ts"),
+      runtime: Runtime.NODEJS_22_X,
+      handler: "handler",
+      functionName,
+    });
     return new Service(this.dockerProject, `LambdaServerEmulator`, {
       image: {
         image: "public.ecr.aws/sam/build-nodejs22.x",
@@ -149,6 +158,23 @@ export class LambdaServerEmulator extends FrameworkSingleton {
           host: 3001,
         },
       ],
+      healthCheck: {
+        test: [
+          "CMD",
+          "sam",
+          "local",
+          "invoke",
+          functionName,
+          "--event",
+          "{}",
+          "--endpoint-url",
+          "http://lambda.local:3001",
+        ],
+        interval: "10s",
+        timeout: "5s",
+        retries: 5,
+        startPeriod: "5s",
+      },
     });
   }
 }

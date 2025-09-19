@@ -19,7 +19,7 @@ const storage = new StorageService(stack, "StorageService");
 const postgres = new Postgres(stack, "Postgres");
 const workflow = new Workflow(stack, "SpectrogramService");
 const seeder = new TriggerScript(stack, "SeedScript", {
-  path: "./triggers/seed",
+  path: "./lambdas/seed",
 });
 const nextjsApp = new NextJSApp(stack, "NextJSApp", {
   storageUrl: storage.bucketEndpoint,
