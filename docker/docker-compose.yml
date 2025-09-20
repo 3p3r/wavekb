@@ -192,6 +192,22 @@ services:
     depends_on:
       postgreslocal:
         condition: service_healthy
+  microservicef1f342ce:
+    build:
+      context: ../lambdas/crawler
+    privileged: false
+    deploy:
+      mode: replicated
+      replicas: 1
+    ports:
+      - 8080:8080
+    networks:
+      localdockerstacknetwork:
+        aliases:
+          - microservice.local.f1f342ce
+    depends_on:
+      stepfunctionworkflowec512ce6:
+        condition: service_started
   nextjslocal:
     image: node:alpine
     user: "1000"

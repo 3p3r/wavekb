@@ -3,7 +3,6 @@ import {
   StateGraph,
   StateMachine,
   DefinitionBody,
-  Chain,
   QueryLanguage,
 } from "aws-cdk-lib/aws-stepfunctions";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";

@@ -19,13 +19,14 @@ index 59c2c1a..9e16d0a 100644
 +    readonly aliases?: string[];
  }
 diff --git a/node_modules/docker-compose-cdk/lib/resources/service.d.ts b/node_modules/docker-compose-cdk/lib/resources/service.d.ts
-index 8956bef..8c82422 100644
+index 8956bef..950b4c5 100644
 --- a/node_modules/docker-compose-cdk/lib/resources/service.d.ts
 +++ b/node_modules/docker-compose-cdk/lib/resources/service.d.ts
-@@ -7,6 +7,24 @@ export declare abstract class ServiceBase extends Resource implements IService {
+@@ -7,9 +7,30 @@ export declare abstract class ServiceBase extends Resource implements IService {
      abstract readonly dnsNames: string[];
      protected constructor(scope: Construct, id: string, props?: ResourceOptions);
  }
+-export interface ServiceProps {
 +export interface HealthCheck {
 +    readonly test: string[];
 +    readonly interval?: string;
@@ -44,10 +45,17 @@ index 8956bef..8c82422 100644
 +        readonly condition: DependencyCondition;
 +    };
 +}
- export interface ServiceProps {
++export interface BuildContext {
++    readonly context: string;
++    readonly dockerfile?: string;
++}
++export interface SharedServiceProps {
      readonly disabled?: boolean;
-     readonly image: IDockerImage;
-@@ -21,6 +39,10 @@ export interface ServiceProps {
+-    readonly image: IDockerImage;
+     readonly user?: string | number;
+     readonly privileged?: boolean;
+     readonly restart?: RestartPolicy;
+@@ -21,7 +42,18 @@ export interface ServiceProps {
      readonly networks?: Array<NetworkSelection>;
      readonly devices?: Array<DeviceMapping>;
      readonly command?: string;
@@ -55,10 +63,18 @@ index 8956bef..8c82422 100644
 +    readonly healthCheck?: HealthCheck | DisabledHealthCheck | string;
 +    readonly dependsOn?: Dependency;
 +    readonly workingDir?: string;
++}
++export interface ImageServiceProps extends SharedServiceProps {
++    readonly image: IDockerImage;
++}
++export interface BuildServiceProps extends SharedServiceProps {
++    readonly build: BuildContext;
  }
++export type ServiceProps = ImageServiceProps | BuildServiceProps;
  export declare class Service extends ServiceBase {
      readonly dnsNames: string[];
-@@ -36,7 +58,12 @@ export declare class Service extends ServiceBase {
+     readonly disabled: boolean;
+@@ -36,7 +68,13 @@ export declare class Service extends ServiceBase {
      readonly networks: Array<NetworkSelection> | undefined;
      readonly devices: Array<DeviceMapping> | undefined;
      readonly command: string | undefined;
@@ -67,23 +83,26 @@ index 8956bef..8c82422 100644
 +    readonly healthCheck: HealthCheck | undefined;
 +    readonly dependsOn: Dependency | undefined;
 +    readonly workingDir: string | undefined;
++    readonly build: BuildContext | undefined;
      constructor(scope: Construct, id: string, props: ServiceProps);
 +    addDependency(service: Service, condition?: DependencyCondition): void;
      render(): object;
  }
 diff --git a/node_modules/docker-compose-cdk/lib/resources/service.js b/node_modules/docker-compose-cdk/lib/resources/service.js
-index 7b507a3..2320698 100644
+index 7b507a3..b3ffa2c 100644
 --- a/node_modules/docker-compose-cdk/lib/resources/service.js
 +++ b/node_modules/docker-compose-cdk/lib/resources/service.js
-@@ -19,6 +19,7 @@ ServiceBase[_a] = { fqn: "docker-compose-cdk.ServiceBase", version: "0.0.3" };
+@@ -19,7 +19,9 @@ ServiceBase[_a] = { fqn: "docker-compose-cdk.ServiceBase", version: "0.0.3" };
  class Service extends ServiceBase {
      constructor(scope, id, props) {
          super(scope, id);
 +        this.workingDir = props.workingDir;
          this.disabled = props.disabled ?? false;
++        this.build = props.build;
          this.image = props.image;
          this.restart = props.restart;
-@@ -43,14 +44,33 @@ class Service extends ServiceBase {
+         this.replicas = props.replicas ?? 1;
+@@ -43,14 +45,37 @@ class Service extends ServiceBase {
          }));
          this.devices = props.devices;
          this.command = props.command;
@@ -108,16 +127,21 @@ index 7b507a3..2320698 100644
      }
      render() {
          return {
++            build: this.build ? {
++                context: this.build.context,
++                dockerfile: this.build.dockerfile,
++            } : undefined,
 +            working_dir: this.workingDir,
              profiles: this.disabled ? ['disabled'] : undefined,
-             image: [this.image.image, this.image.tag ?? 'latest'].join(':'),
+-            image: [this.image.image, this.image.tag ?? 'latest'].join(':'),
++            image: this.image ? [this.image.image, this.image.tag ?? 'latest'].join(':') : undefined,
              user: this.user,
              command: this.command,
 +            entrypoint: this.entrypoint,
              privileged: this.privileged ?? false,
              restart: this.restart,
              deploy: {
-@@ -88,12 +108,22 @@ class Service extends ServiceBase {
+@@ -88,12 +113,22 @@ class Service extends ServiceBase {
                  return Object.assign(map, {
                      [mapping.network.name]: {
                          ipv4_address: mapping.ipV4Address,

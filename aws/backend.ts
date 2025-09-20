@@ -4,6 +4,7 @@ import "source-map-support/register";
 import d from "debug";
 
 import { FrameworkStack } from "./framework";
+import { MicroService } from "./microservice";
 import { NextJSApp } from "./nextjs";
 import { Postgres } from "./postgres";
 import { QueueService } from "./queue";
@@ -21,6 +22,9 @@ const workflow = new Workflow(stack, "SpectrogramService");
 const seeder = new TriggerScript(stack, "SeedScript", {
   path: "./lambdas/seed",
 });
+const crawler = new MicroService(stack, "CrawlerService", {
+  functionPath: "./lambdas/crawler",
+});
 const nextjsApp = new NextJSApp(stack, "NextJSApp", {
   storageUrl: storage.bucketEndpoint,
   postgresUrl: postgres.endpoint,
@@ -30,11 +34,21 @@ const nextjsApp = new NextJSApp(stack, "NextJSApp", {
 seeder.executeAfter(postgres);
 seeder.executeBefore(nextjsApp);
 
-workflow.getServiceOrThrow().addDependency(postgres.getServiceOrThrow(), "service_healthy");
-workflow.getServiceOrThrow().addDependency(queue.getServiceOrThrow(), "service_started");
-workflow.getServiceOrThrow().addDependency(storage.getServiceOrThrow(), "service_started");
-
-nextjsApp.getServiceOrThrow().addDependency(workflow.getServiceOrThrow(), "service_started");
+workflow
+  .getServiceOrThrow()
+  .addDependency(postgres.getServiceOrThrow(), "service_healthy");
+workflow
+  .getServiceOrThrow()
+  .addDependency(queue.getServiceOrThrow(), "service_started");
+workflow
+  .getServiceOrThrow()
+  .addDependency(storage.getServiceOrThrow(), "service_started");
+crawler
+  .getServiceOrThrow()
+  .addDependency(workflow.getServiceOrThrow(), "service_started");
+nextjsApp
+  .getServiceOrThrow()
+  .addDependency(workflow.getServiceOrThrow(), "service_started");
 
 stack.frameworkApp.synthesize();
 
