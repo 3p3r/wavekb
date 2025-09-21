@@ -29,16 +29,20 @@ export class MicroService extends FrameworkConstruct {
 
   addToDockerCompose() {
     const id = smallHash(this.node.id);
+    const port = 8000;
     return new Service(this.dockerProject, `MicroService${id}`, {
       build: {
         context: this.frameworkApp.toDockerVolumeSourcePath(
           this.props.functionPath
         ),
       },
+      environment: {
+        PORT: port.toString(),
+      },
       ports: [
         {
-          container: 8080,
-          host: 8080,
+          container: port,
+          host: port,
         },
       ],
       networks: [
@@ -47,6 +51,13 @@ export class MicroService extends FrameworkConstruct {
           aliases: [`microservice.local.${id}`],
         },
       ],
+      healthCheck: {
+        test: ["CMD-SHELL", `curl -f http://localhost:${port}/health || exit 1`],
+        interval: "30s",
+        timeout: "5s",
+        retries: 3,
+        startPeriod: "1s",
+      },
     });
   }
 }

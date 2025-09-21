@@ -199,12 +199,22 @@ services:
     deploy:
       mode: replicated
       replicas: 1
+    environment:
+      PORT: "8000"
     ports:
-      - 8080:8080
+      - 8000:8000
     networks:
       localdockerstacknetwork:
         aliases:
           - microservice.local.f1f342ce
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -f http://localhost:8000/health || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 1s
     depends_on:
       stepfunctionworkflowec512ce6:
         condition: service_started

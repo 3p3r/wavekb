@@ -18,8 +18,6 @@ COPY main.py /app/main.py
 
 WORKDIR /app
 
-# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
-
 COPY entry.sh /app/entry.sh
 RUN chmod +x /app/entry.sh
-ENTRYPOINT ["/app/entry.sh", "main.handler"]
+ENTRYPOINT ["/app/entry.sh"]
