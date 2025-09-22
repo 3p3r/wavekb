@@ -1,3 +1,6 @@
+import assert from "node:assert";
+import { resolve } from "node:path";
+
 import {
   Pass,
   StateGraph,
@@ -10,43 +13,43 @@ import { Code, Runtime } from "aws-cdk-lib/aws-lambda";
 import { RestartPolicy, Service } from "docker-compose-cdk";
 import { Stack } from "aws-cdk-lib";
 
-import { resolve } from "node:path";
-
 import { FrameworkConstruct, FrameworkSingleton } from "./framework";
 import {
-  LOCAL_AWS_ACCESS_KEY_ID,
   LOCAL_AWS_REGION,
+  LOCAL_AWS_ACCESS_KEY_ID,
   LOCAL_AWS_SECRET_ACCESS_KEY,
-  smallHash,
 } from "./common";
 
 export interface WorkflowProps {
   readonly path: string;
 }
 
+/**
+ * A workflow that orchestrates multiple steps using AWS Step Functions in production
+ * and a local Step Functions emulator in development.
+ */
 export class Workflow extends FrameworkConstruct {
-  readonly stateGraph: StateGraph;
-  constructor(scope: FrameworkConstruct, id: string) {
-    super(scope, id);
-    const passState = new Pass(this, `Pass${smallHash(id)}`);
-    this.stateGraph = new StateGraph(passState, `StateGraph${smallHash(id)}`);
-    new StateMachine(this, `StateMachine${smallHash(id)}`, {
+  stateGraph: StateGraph | undefined;
+
+  protected addToAwsDeployment(id: string): void {
+    const passState = new Pass(this, this.scopedName("Pass"));
+    this.stateGraph = new StateGraph(passState, this.scopedName("StateGraph"));
+    new StateMachine(this, this.scopedName("StateMachine"), {
       definitionBody: DefinitionBody.fromString(this.stateGraph.toString()),
-      stateMachineName: `StateMachine${smallHash(id)}`,
+      stateMachineName: this.scopedName("StateMachine"),
     });
-    this.service = this.addToDockerCompose();
   }
-  addToDockerCompose(): Service {
-    // local emulators
+
+  protected addToDockerCompose(id: string): Service {
+    assert(this.stateGraph, "State graph not initialized");
     const lse = new LambdaServerEmulator(this, "LambdaServerEmulator");
     const sfe = new StepFunctionEmulator(this, "StepFunctionEmulator");
     sfe.getServiceOrThrow().addDependency(lse.getServiceOrThrow());
-    const id = smallHash(this.node.id);
     const stateJson = this.stateGraph.toGraphJson(QueryLanguage.JSON_PATH);
     const definitionString = JSON.stringify(stateJson);
     const service = new Service(
       this.dockerProject,
-      `StepFunctionWorkflow${id}`,
+      this.scopedName("StepFunctionWorkflow"),
       {
         image: {
           image: "amazon/aws-cli",
@@ -59,11 +62,13 @@ export class Workflow extends FrameworkConstruct {
         networks: [
           {
             network: this.dockerNetwork,
-            aliases: [`stepfunctions.local.${id}`],
+            aliases: [this.scopedName("stepfunctions.local", ".")],
           },
         ],
         restart: RestartPolicy.NO,
-        command: `stepfunctions create-state-machine --endpoint-url http://stepfunctions.local:8083 --region us-east-1 --definition '${definitionString}' --name StateMachine${id} --role-arn arn:aws:iam::123456789012:role/DummyRole`,
+        command: `stepfunctions create-state-machine --endpoint-url http://stepfunctions.local:8083 --region us-east-1 --definition '${definitionString}' --name ${this.scopedName(
+          "StateMachine"
+        )} --role-arn arn:aws:iam::123456789012:role/DummyRole`,
       }
     );
     service.addDependency(sfe.getServiceOrThrow(), "service_healthy");
@@ -72,15 +77,11 @@ export class Workflow extends FrameworkConstruct {
 }
 
 export class StepFunctionEmulator extends FrameworkSingleton {
-  constructor(scope: FrameworkConstruct, id: string) {
-    super(scope, id);
-    // todo: better abstraction for singleton
-    const existing = FrameworkSingleton.getInstanceInScope(scope, id);
-    if (existing) return existing;
-    this.service = this.addToDockerCompose();
+  protected addToAwsDeployment(id: string): void {
+    // nothing to contribute to AWS deployment
   }
-  addToDockerCompose(): Service {
-    return new Service(this.dockerProject, `StepFunctionsEmulator`, {
+  protected addToDockerCompose(): Service {
+    return new Service(this.dockerProject, "StepFunctionsEmulator", {
       image: {
         image: "amazon/aws-stepfunctions-local",
       },
@@ -118,14 +119,10 @@ export class StepFunctionEmulator extends FrameworkSingleton {
 }
 
 export class LambdaServerEmulator extends FrameworkSingleton {
-  constructor(scope: FrameworkConstruct, id: string) {
-    super(scope, id);
-    // todo: better abstraction for singleton
-    const existing = FrameworkSingleton.getInstanceInScope(scope, id);
-    if (existing) return existing;
-    this.service = this.addToDockerCompose();
+  protected addToAwsDeployment(id: string): void {
+    // nothing to contribute to AWS deployment
   }
-  addToDockerCompose(): Service {
+  protected addToDockerCompose(): Service {
     const functionName = `LocalHealthCheck`;
     new NodejsFunction(this, "LocalHealthCheck", {
       code: Code.fromAsset(resolve(__dirname, "../lambdas/health")),

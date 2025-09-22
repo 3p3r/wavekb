@@ -1,11 +1,15 @@
-import { Names } from "aws-cdk-lib";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Service } from "docker-compose-cdk";
 
-import { FrameworkConstruct } from "./framework";
-import { smallHash } from "./common";
+import assert from "node:assert";
 
-const ALL_PORTS = new Map<string, number>();
+import { FrameworkConstruct } from "./framework";
+import {
+  getRandomDeterministicPort,
+  smallHash,
+  localArnFormat,
+} from "./common";
+
 const ELASTICMQ_CONFIG_TEMPLATE = `
 include classpath("application.conf")
 
@@ -31,41 +35,44 @@ queues {
     }
 }`.trim();
 
+/**
+ * A Queue service that deploys to SQS on AWS and ElasticMQ in Docker Compose.
+ */
 export class QueueService extends FrameworkConstruct {
-  readonly remoteQueueUrl: string;
-  readonly localQueueName: string;
-  readonly localQueueUrl: string;
-  readonly localQueuePort: number;
-  readonly queueUrl: string;
+  queueArn: string | undefined;
+  localQueueArn: string | undefined;
+  localQueuePort: number | undefined;
+  remoteQueueArn: string | undefined;
+  localQueueName: string | undefined;
 
-  constructor(scope: FrameworkConstruct, id: string) {
-    super(scope, id);
-    const q = new Queue(this, `Queue${smallHash(id)}`);
-    this.localQueuePort = ALL_PORTS.size + 9324;
-    this.localQueueName = smallHash(
-      Names.uniqueResourceName(this, {
-        allowedSpecialCharacters: "",
-        separator: "",
-        maxLength: 63,
-      })
-    );
-    this.service = this.addToDockerCompose();
-    this.remoteQueueUrl = q.queueArn;
-    this.localQueueUrl = `http://sqs.local:${this.localQueuePort}/${this.localQueueName}`;
-    this.queueUrl =
-      this.frameworkEnv === "development"
-        ? this.localQueueUrl
-        : this.remoteQueueUrl;
-    ALL_PORTS.set(this.localQueueUrl, this.localQueuePort);
+  getQueueArn(): string {
+    assert(this.queueArn, "Queue ARN not initialized");
+    return this.queueArn;
   }
 
-  addToDockerCompose() {
+  protected addToAwsDeployment(id: string): void {
+    this.localQueueName = this.scopedName("Queue");
+    this.localQueuePort = getRandomDeterministicPort(this.localQueueName);
+    const q = new Queue(this, this.scopedName("Queue"));
+    this.remoteQueueArn = q.queueArn;
+    this.localQueueArn = localArnFormat(
+      `${this.scopedName("sqs.local", ".")}:${this.localQueuePort}`,
+      this.localQueueName
+    );
+    this.queueArn =
+      this.frameworkEnv === "development"
+        ? this.localQueueArn
+        : this.remoteQueueArn;
+  }
+
+  protected addToDockerCompose() {
+    assert(this.localQueueName, "localQueueName not initialized");
+    assert(this.localQueuePort, "localQueuePort not initialized");
     const template = ELASTICMQ_CONFIG_TEMPLATE.replace(
       /<QUEUE_NAME>/g,
       this.localQueueName
     );
     const escapedTemplate = JSON.stringify(template, null, 0).slice(1, -1);
-    // write template into /custom.conf
     const command = [
       "/bin/sh",
       "-c",
@@ -87,7 +94,7 @@ export class QueueService extends FrameworkConstruct {
       networks: [
         {
           network: this.dockerNetwork,
-          aliases: ["sqs.local"],
+          aliases: [this.scopedName("sqs.local", ".")],
         },
       ],
     });

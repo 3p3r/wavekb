@@ -1,49 +1,49 @@
+import assert from "node:assert";
 import { resolve } from "node:path";
 
-import { Names } from "aws-cdk-lib";
 import { Bucket } from "aws-cdk-lib/aws-s3";
 import { Service } from "docker-compose-cdk";
 
 import { FrameworkConstruct } from "./framework";
 import {
-  LOCAL_AWS_ACCESS_KEY_ID,
+  getRandomDeterministicPort,
   LOCAL_AWS_SECRET_ACCESS_KEY,
-  smallHash,
+  LOCAL_AWS_ACCESS_KEY_ID,
 } from "./common";
 
-const ALL_PORTS = new Map<string, number>();
-
+/**
+ * A storage service that provides an S3 bucket in AWS and a MinIO service in local development.
+ */
 export class StorageService extends FrameworkConstruct {
-  readonly remoteBucketEndpoint: string;
-  readonly localBucketEndpoint: string;
-  readonly localBucketName: string;
-  readonly localBucketPort: number;
-  readonly bucketEndpoint: string;
+  remoteBucketEndpoint: string | undefined;
+  localBucketEndpoint: string | undefined;
+  localBucketName: string | undefined;
+  localBucketPort: number | undefined;
+  bucketEndpoint: string | undefined;
 
-  constructor(scope: FrameworkConstruct, id: string) {
-    super(scope, id);
-    const bucket = new Bucket(this, `StorageBucket${smallHash(id)}`);
-    this.localBucketPort = ALL_PORTS.size + 9000;
-    this.localBucketName = smallHash(
-      Names.uniqueResourceName(this, {
-        allowedSpecialCharacters: "",
-        separator: "",
-        maxLength: 63,
-      })
-    );
-    this.service = this.addToDockerCompose();
-    this.localBucketEndpoint = `http://s3.local:${this.localBucketPort}/${this.localBucketName}`;
+  getBucketEndpoint(): string {
+    assert(this.bucketEndpoint, "Bucket endpoint not initialized");
+    return this.bucketEndpoint;
+  }
+
+  protected addToAwsDeployment(id: string): void {
+    this.localBucketName = this.scopedName("StorageBucket");
+    const bucket = new Bucket(this, this.localBucketName);
+    this.localBucketPort = getRandomDeterministicPort(this.localBucketName);
+    this.localBucketEndpoint = `http://${this.scopedName("s3.local", ".")}:${
+      this.localBucketPort
+    }/${this.localBucketName}`;
     this.remoteBucketEndpoint = bucket.urlForObject();
     this.bucketEndpoint =
       this.frameworkEnv === "development"
         ? this.localBucketEndpoint
         : this.remoteBucketEndpoint;
-    ALL_PORTS.set(this.localBucketEndpoint, this.localBucketPort);
   }
 
-  addToDockerCompose() {
-    const id = smallHash(this.node.id);
-    return new Service(this.dockerProject, `StorageBucket${id}`, {
+  protected addToDockerCompose() {
+    assert(this.localBucketName, "Local bucket name not initialized");
+    assert(this.localBucketPort, "Local bucket port not initialized");
+    return new Service(this.dockerProject, this.localBucketName, {
       image: {
         image: "minio/minio",
         tag: "latest",
@@ -61,7 +61,7 @@ export class StorageService extends FrameworkConstruct {
       networks: [
         {
           network: this.dockerNetwork,
-          aliases: ["s3.local"],
+          aliases: [this.scopedName("s3.local", ".")],
         },
       ],
       entrypoint: "/bin/sh",

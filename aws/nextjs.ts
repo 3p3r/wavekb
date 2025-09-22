@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { Nextjs } from "cdk-nextjs-standalone";
 import { Service } from "docker-compose-cdk";
 
-import { FrameworkConstruct } from "./framework";
+import { FrameworkSingleton } from "./framework";
 
 const DOCKER_DEV_PORT = 4000;
 
@@ -14,35 +14,23 @@ export interface NextJSAppProps {
   readonly queueUrl: string;
 }
 
-let EXISTS = false;
+/**
+ * A NextJS application that deploys to AWS Lambda using OpenNext
+ * and to local Docker Compose as the dev server of the application.
+ */
+export class NextJSApp extends FrameworkSingleton<NextJSAppProps> {
+  nextjs: Nextjs | undefined;
+  appUrl: string | undefined;
 
-export class NextJSApp extends FrameworkConstruct {
-  readonly nextjs: Nextjs;
-  readonly appUrl: string;
-
-  constructor(
-    scope: FrameworkConstruct,
-    id: string,
-    private readonly _props: NextJSAppProps
-  ) {
-    super(scope, id);
-
-    EXISTS = !(assert(
-      !EXISTS,
-      [
-        "You reached the cap on this stack.",
-        "Only one NextJS app construct can be created!",
-      ].join(" ")
-    ) as unknown);
-
+  protected addToAwsDeployment(id: string): void {
     this.nextjs = new Nextjs(this, "Nextjs", {
       nextjsPath: "app", // relative path from your project root to NextJS
       skipBuild: true, // <--- Uncomment this line to skip the build step
       environment: {
         FRAMEWORK_ENVIRONMENT: this.frameworkEnv,
-        POSTGRES_URL: this._props.postgresUrl,
-        STORAGE_URL: this._props.storageUrl,
-        QUEUE_URL: this._props.queueUrl,
+        POSTGRES_URL: this.props.postgresUrl,
+        STORAGE_URL: this.props.storageUrl,
+        QUEUE_URL: this.props.queueUrl,
         DEBUG: "wavekb*",
       },
     });
@@ -55,7 +43,7 @@ export class NextJSApp extends FrameworkConstruct {
     }
   }
 
-  addToDockerCompose() {
+  protected addToDockerCompose() {
     return new Service(this.dockerProject, "NextjsLocal", {
       image: {
         image: "node",
@@ -65,9 +53,9 @@ export class NextJSApp extends FrameworkConstruct {
       environment: {
         DEBUG: "wavekb*",
         PORT: `${DOCKER_DEV_PORT}`,
-        QUEUE_URL: this._props.queueUrl,
-        STORAGE_URL: this._props.storageUrl,
-        POSTGRES_URL: this._props.postgresUrl,
+        QUEUE_URL: this.props.queueUrl,
+        STORAGE_URL: this.props.storageUrl,
+        POSTGRES_URL: this.props.postgresUrl,
         FRAMEWORK_ENVIRONMENT: this.frameworkEnv,
       },
       command: "sh -c 'cd /app && npm run dev'",

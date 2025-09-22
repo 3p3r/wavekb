@@ -7,8 +7,16 @@ import assert from "node:assert";
 import { writeFileSync } from "node:fs";
 import { resolve, dirname, relative } from "node:path";
 
+import { smallHash } from "./common";
+
+/**
+ * The environment in which the framework is running.
+ * This is used transparently by the framework.
+ */
 export enum FrameworkEnvironment {
+  // AWS Cloud Production deployment
   Production = "production",
+  // Docker compose local development
   Development = "development",
 }
 
@@ -22,6 +30,9 @@ export function getDefaultEnvironment(): FrameworkEnvironment {
     : FrameworkEnvironment.Development;
 }
 
+/**
+ * A framework to build SaaS apps on AWS, with local Docker compose support.
+ */
 export class FrameworkApp extends awsCdk.App {
   public readonly dockerCompose: dockerComposeCdk.App;
   public readonly dockerProject: dockerComposeCdk.Project;
@@ -41,10 +52,20 @@ export class FrameworkApp extends awsCdk.App {
       "LocalDockerStackNetwork"
     );
   }
+  /**
+   * Calculates a relative path so that the given path is relative
+   * to the docker-compose.yml file location.
+   * @param localPath The local path to convert.
+   * @returns The relative path to use in the docker-compose.yml file.
+   */
   public toDockerVolumeSourcePath(localPath: string): string {
     const dockerComposeDir = dirname(this.dockerComposePath);
     return relative(dockerComposeDir, localPath);
   }
+  /**
+   * Dual stack synthesis where we emit a Docker compose file
+   * alongside the CloudFormation templates.
+   */
   public synthesize(): void {
     const dockerComposeYAML = this.dockerCompose
       .synth()
@@ -63,6 +84,9 @@ export class FrameworkApp extends awsCdk.App {
   }
 }
 
+/**
+ * A CDK Stack that is aware of the FrameworkApp and its Docker compose setup.
+ */
 export class FrameworkStack extends awsCdk.Stack {
   public readonly service = undefined;
   public readonly frameworkApp: FrameworkApp;
@@ -98,15 +122,43 @@ export class FrameworkStack extends awsCdk.Stack {
   }
 }
 
-export abstract class FrameworkConstruct extends Construct {
+/**
+ * A base class for all framework constructs. Framework constructs
+ * can contribute to both AWS CloudFormation and Docker compose.
+ */
+export abstract class FrameworkConstruct<PropsT = any> extends Construct {
   public service: dockerComposeCdk.Service | undefined;
-  constructor(scope: FrameworkConstruct | FrameworkStack, id: string) {
+  public readonly shortId: string;
+  constructor(
+    scope: FrameworkConstruct | FrameworkStack,
+    id: string,
+    protected readonly props: PropsT = {} as PropsT
+  ) {
     super(scope, id);
+    this.shortId = smallHash(id);
+    this.addToAwsDeployment(id);
+    this.service = this.addToDockerCompose(id);
   }
-  static IsFrameworkConstruct(construct: any): construct is FrameworkConstruct {
-    return construct instanceof FrameworkConstruct;
+  /**
+   * Contribute infrastructure to AWS deployment.
+   * @param id The construct ID
+   */
+  protected abstract addToAwsDeployment(id: string): void;
+  /**
+   * Contribute infrastructure to Docker compose deployment.
+   * @param id The construct ID
+   * @returns The Docker compose service
+   */
+  protected abstract addToDockerCompose(id: string): dockerComposeCdk.Service;
+  /**
+   * Get a safe and scoped name for resources.
+   * @param name The base name
+   * @param sep The separator to use (default: "")
+   * @returns The scoped name
+   */
+  public scopedName(name: string, sep: string = ""): string {
+    return `${name}${sep}${this.shortId}`;
   }
-  abstract addToDockerCompose(): dockerComposeCdk.Service;
   public get dockerCompose() {
     return (awsCdk.Stack.of(this) as FrameworkStack).dockerCompose;
   }
@@ -122,16 +174,28 @@ export abstract class FrameworkConstruct extends Construct {
   public get frameworkApp() {
     return (awsCdk.Stack.of(this) as FrameworkStack).frameworkApp;
   }
+  /**
+   * Get the Docker compose service associated with this construct.
+   * @returns The Docker compose service
+   */
   public getServiceOrThrow(): dockerComposeCdk.Service {
     assert(this.service, "Service not initialized yet");
     return this.service;
   }
 }
 
-export abstract class FrameworkSingleton extends FrameworkConstruct {
-  constructor(scope: FrameworkConstruct | FrameworkStack, id: string) {
-    super(scope, id);
-    // todo: improve this to check for props equality
+/**
+ * Utility to create singleton constructs within a given scope.
+ */
+export abstract class FrameworkSingleton<
+  PropsT = any
+> extends FrameworkConstruct<PropsT> {
+  constructor(
+    scope: FrameworkConstruct | FrameworkStack,
+    id: string,
+    props: PropsT = {} as PropsT
+  ) {
+    super(scope, id, props);
     const existing = FrameworkSingleton.getInstanceInScope(scope, id);
     if (existing) {
       return existing;

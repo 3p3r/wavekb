@@ -6,31 +6,27 @@ import { Service } from "docker-compose-cdk";
 import { CfnCluster } from "aws-cdk-lib/aws-dsql";
 
 import { FrameworkConstruct } from "./framework";
+import { getRandomDeterministicPort } from "./common";
 
-let EXISTS = false;
-
+/**
+ * A Postgres SQL service that deploys to Amazon DSQL on AWS and Postgres in Docker Compose.
+ */
 export class Postgres extends FrameworkConstruct {
-  readonly endpoint: string;
-  readonly region: string;
-
-  private readonly _remoteEndpoint: string;
-  private readonly _localEndpoint: string;
+  remoteEndpoint: string | undefined;
+  localEndpoint: string | undefined;
+  localPort: number | undefined;
+  endpoint: string | undefined;
 
   static readonly LOCAL_POSTGRES_USER = "wavekb" as const;
   static readonly LOCAL_POSTGRES_PASSWORD = "local" as const;
   static readonly LOCAL_POSTGRES_DB = "wavekb-local" as const;
 
-  constructor(scope: FrameworkConstruct, id: string) {
-    super(scope, id);
+  getEndpoint(): string {
+    assert(this.endpoint, "Postgres endpoint not initialized");
+    return this.endpoint;
+  }
 
-    EXISTS = !(assert(
-      !EXISTS,
-      [
-        "You reached the cap on this stack.",
-        "Only one Postgres database construct can be created!",
-      ].join(" ")
-    ) as unknown);
-
+  protected addToAwsDeployment(id: string): void {
     const db = new CfnCluster(this, "DsqlCluster", {
       deletionProtectionEnabled: false,
     });
@@ -38,23 +34,25 @@ export class Postgres extends FrameworkConstruct {
     const region = Stack.of(this).region;
     const endpoint = `${db.attrIdentifier}.dsql.${region}.on.aws`;
 
-    this._remoteEndpoint = endpoint;
-    this.region = region;
+    this.remoteEndpoint = endpoint;
 
-    this.service = this.addToDockerCompose();
-
-    const pgEndpoint = `postgres://${Postgres.LOCAL_POSTGRES_USER}:${Postgres.LOCAL_POSTGRES_PASSWORD}@postgres.local/${Postgres.LOCAL_POSTGRES_DB}`;
-    this._localEndpoint = pgEndpoint;
+    this.localPort = getRandomDeterministicPort(this.scopedName("Postgres"));
+    this.localEndpoint = `postgres://${Postgres.LOCAL_POSTGRES_USER}:${
+      Postgres.LOCAL_POSTGRES_PASSWORD
+    }@${this.scopedName("postgres.local", ".")}:${this.localPort}/${
+      Postgres.LOCAL_POSTGRES_DB
+    }`;
 
     if (this.frameworkEnv === "development") {
-      this.endpoint = this._localEndpoint;
+      this.endpoint = this.localEndpoint;
     } else {
-      this.endpoint = this._remoteEndpoint;
+      this.endpoint = this.remoteEndpoint;
     }
   }
 
-  addToDockerCompose() {
-    return new Service(this.dockerProject, "PostgresLocal", {
+  protected addToDockerCompose() {
+    assert(this.localPort, "Local port not initialized");
+    return new Service(this.dockerProject, this.scopedName("Postgres"), {
       image: {
         image: "postgres",
         tag: "latest",
@@ -68,20 +66,25 @@ export class Postgres extends FrameworkConstruct {
       networks: [
         {
           network: this.dockerNetwork,
-          aliases: ["postgres.local"],
+          aliases: [this.scopedName("postgres.local", ".")],
         },
       ],
       command: "postgres",
       ports: [
         {
           container: 5432,
-          host: 5432,
+          host: this.localPort,
         },
       ],
       volumes: [
         {
           source: this.frameworkApp.toDockerVolumeSourcePath(
-            resolve(__dirname, "..", ".postgres")
+            resolve(
+              __dirname,
+              "..",
+              ".postgres",
+              this.scopedName(Postgres.LOCAL_POSTGRES_DB)
+            )
           ),
           target: "/var/lib/postgresql/data",
         },
