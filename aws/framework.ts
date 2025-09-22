@@ -84,10 +84,47 @@ export class FrameworkApp extends awsCdk.App {
   }
 }
 
+export enum DependencyCondition {
+  /** service_started */
+  Started,
+  /** service_completed_successfully */
+  Stopped,
+  /** service_healthy */
+  Running,
+}
+
+/**
+ * Common point of abstraction for all framework constructs.
+ * Between the stack itself and the individual components.
+ */
+export interface IFrameworkConstruct extends Construct {
+  readonly dockerCompose: dockerComposeCdk.App;
+  readonly dockerProject: dockerComposeCdk.Project;
+  readonly dockerNetwork: dockerComposeCdk.Network;
+  readonly frameworkEnv: FrameworkEnvironment;
+  readonly frameworkApp: FrameworkApp;
+  addToAwsDeployment(id: string): void;
+  addToDockerCompose(id: string): dockerComposeCdk.Service;
+  getServiceOrThrow(): dockerComposeCdk.Service;
+  getScopedName(name: string, sep?: string): string;
+  dependsOn(dep: IFrameworkConstruct, cond?: DependencyCondition): void;
+}
+
+/**
+ * Convenience so that we can refer to the interface type easily.
+ * Without needing to import two things.
+ */
+export namespace FrameworkConstruct {
+  export type Interface = IFrameworkConstruct;
+}
+
 /**
  * A CDK Stack that is aware of the FrameworkApp and its Docker compose setup.
  */
-export class FrameworkStack extends awsCdk.Stack {
+export class FrameworkStack
+  extends awsCdk.Stack
+  implements FrameworkConstruct.Interface
+{
   public readonly service = undefined;
   public readonly frameworkApp: FrameworkApp;
   public readonly frameworkEnv: FrameworkEnvironment;
@@ -105,20 +142,29 @@ export class FrameworkStack extends awsCdk.Stack {
     this.frameworkApp = scope;
     this.frameworkEnv = scope.env;
   }
-  public get dockerCompose(): dockerComposeCdk.App {
+  get dockerCompose(): dockerComposeCdk.App {
     return this.frameworkApp.dockerCompose;
   }
-  public get dockerProject(): dockerComposeCdk.Project {
+  get dockerProject(): dockerComposeCdk.Project {
     return this.frameworkApp.dockerProject;
   }
-  public get dockerNetwork(): dockerComposeCdk.Network {
+  get dockerNetwork(): dockerComposeCdk.Network {
     return this.frameworkApp.dockerNetwork;
   }
   addToDockerCompose(): dockerComposeCdk.Service {
     assert(false, "addToDockerCompose is not available at stack level");
   }
-  public getServiceOrThrow(): dockerComposeCdk.Service {
+  addToAwsDeployment(id: string): void {
+    assert(false, "addToAwsDeployment is not available at stack level");
+  }
+  getScopedName(name: string, sep?: string): string {
+    assert(false, "getScopedName is not available at stack level");
+  }
+  getServiceOrThrow(): dockerComposeCdk.Service {
     assert(false, "getServiceOrThrow is not available at stack level");
+  }
+  dependsOn(dep: IFrameworkConstruct): void {
+    this.node.addDependency(dep.node);
   }
 }
 
@@ -126,62 +172,89 @@ export class FrameworkStack extends awsCdk.Stack {
  * A base class for all framework constructs. Framework constructs
  * can contribute to both AWS CloudFormation and Docker compose.
  */
-export abstract class FrameworkConstruct<PropsT = any> extends Construct {
+export abstract class FrameworkConstruct
+  extends Construct
+  implements FrameworkConstruct.Interface
+{
   public service: dockerComposeCdk.Service | undefined;
   public readonly shortId: string;
-  constructor(
-    scope: FrameworkConstruct | FrameworkStack,
-    id: string,
-    protected readonly props: PropsT = {} as PropsT
-  ) {
+  constructor(scope: FrameworkConstruct.Interface, id: string) {
     super(scope, id);
     this.shortId = smallHash(id);
-    this.addToAwsDeployment(id);
-    this.service = this.addToDockerCompose(id);
+  }
+  /**
+   * Actually runs the synthesis of both AWS and Docker compose.
+   * Must be called by child classes at the end of their constructor
+   */
+  initialize() {
+    this.addToAwsDeployment(this.node.id);
+    this.service = this.addToDockerCompose(this.node.id);
   }
   /**
    * Contribute infrastructure to AWS deployment.
    * @param id The construct ID
    */
-  protected abstract addToAwsDeployment(id: string): void;
+  abstract addToAwsDeployment(id: string): void;
   /**
    * Contribute infrastructure to Docker compose deployment.
    * @param id The construct ID
    * @returns The Docker compose service
    */
-  protected abstract addToDockerCompose(id: string): dockerComposeCdk.Service;
+  abstract addToDockerCompose(id: string): dockerComposeCdk.Service;
   /**
    * Get a safe and scoped name for resources.
    * @param name The base name
    * @param sep The separator to use (default: "")
    * @returns The scoped name
    */
-  public scopedName(name: string, sep: string = ""): string {
+  getScopedName(name: string, sep: string = ""): string {
     return `${name}${sep}${this.shortId}`;
   }
-  public get dockerCompose() {
+  get dockerCompose() {
     return (awsCdk.Stack.of(this) as FrameworkStack).dockerCompose;
   }
-  public get dockerNetwork() {
+  get dockerNetwork() {
     return (awsCdk.Stack.of(this) as FrameworkStack).dockerNetwork;
   }
-  public get dockerProject() {
+  get dockerProject() {
     return (awsCdk.Stack.of(this) as FrameworkStack).dockerProject;
   }
-  public get frameworkEnv() {
+  get frameworkEnv() {
     return (awsCdk.Stack.of(this) as FrameworkStack).frameworkEnv;
   }
-  public get frameworkApp() {
+  get frameworkApp() {
     return (awsCdk.Stack.of(this) as FrameworkStack).frameworkApp;
   }
   /**
    * Get the Docker compose service associated with this construct.
    * @returns The Docker compose service
    */
-  public getServiceOrThrow(): dockerComposeCdk.Service {
+  getServiceOrThrow(): dockerComposeCdk.Service {
     assert(this.service, "Service not initialized yet");
     return this.service;
   }
+  dependsOn(
+    dep: IFrameworkConstruct,
+    cond = DependencyCondition.Started
+  ): void {
+    // this.node.addDependency(dep.node);
+    this.getServiceOrThrow().addDependency(
+      dep.getServiceOrThrow(),
+      cond === DependencyCondition.Stopped
+        ? "service_completed_successfully"
+        : cond === DependencyCondition.Running
+        ? "service_healthy"
+        : "service_started"
+    );
+  }
+}
+
+/**
+ * Convenience so that we can refer to the interface type easily.
+ * Without needing to import two things.
+ */
+export namespace FrameworkSingleton {
+  export type Interface = FrameworkConstruct.Interface;
 }
 
 /**
@@ -189,20 +262,16 @@ export abstract class FrameworkConstruct<PropsT = any> extends Construct {
  */
 export abstract class FrameworkSingleton<
   PropsT = any
-> extends FrameworkConstruct<PropsT> {
-  constructor(
-    scope: FrameworkConstruct | FrameworkStack,
-    id: string,
-    props: PropsT = {} as PropsT
-  ) {
-    super(scope, id, props);
+> extends FrameworkConstruct {
+  constructor(scope: FrameworkConstruct.Interface, id: string) {
+    super(scope, id);
     const existing = FrameworkSingleton.getInstanceInScope(scope, id);
     if (existing) {
       return existing;
     }
   }
   public static getInstanceInScope(
-    scope: FrameworkConstruct | FrameworkStack,
+    scope: FrameworkConstruct.Interface,
     id: string
   ): FrameworkSingleton | null {
     const stack = awsCdk.Stack.of(scope) as FrameworkStack;

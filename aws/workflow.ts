@@ -20,36 +20,40 @@ import {
   LOCAL_AWS_SECRET_ACCESS_KEY,
 } from "./common";
 
-export interface WorkflowProps {
-  readonly path: string;
-}
-
 /**
  * A workflow that orchestrates multiple steps using AWS Step Functions in production
  * and a local Step Functions emulator in development.
  */
 export class Workflow extends FrameworkConstruct {
-  stateGraph: StateGraph | undefined;
+  private stateGraph: StateGraph | undefined;
 
-  protected addToAwsDeployment(id: string): void {
-    const passState = new Pass(this, this.scopedName("Pass"));
-    this.stateGraph = new StateGraph(passState, this.scopedName("StateGraph"));
-    new StateMachine(this, this.scopedName("StateMachine"), {
+  constructor(scope: FrameworkConstruct.Interface, id: string) {
+    super(scope, id);
+    this.initialize();
+  }
+
+  addToAwsDeployment(id: string): void {
+    const passState = new Pass(this, this.getScopedName("Pass"));
+    this.stateGraph = new StateGraph(
+      passState,
+      this.getScopedName("StateGraph")
+    );
+    new StateMachine(this, this.getScopedName("StateMachine"), {
       definitionBody: DefinitionBody.fromString(this.stateGraph.toString()),
-      stateMachineName: this.scopedName("StateMachine"),
+      stateMachineName: this.getScopedName("StateMachine"),
     });
   }
 
-  protected addToDockerCompose(id: string): Service {
+  addToDockerCompose(id: string): Service {
     assert(this.stateGraph, "State graph not initialized");
     const lse = new LambdaServerEmulator(this, "LambdaServerEmulator");
     const sfe = new StepFunctionEmulator(this, "StepFunctionEmulator");
-    sfe.getServiceOrThrow().addDependency(lse.getServiceOrThrow());
+    sfe.dependsOn(lse);
     const stateJson = this.stateGraph.toGraphJson(QueryLanguage.JSON_PATH);
     const definitionString = JSON.stringify(stateJson);
     const service = new Service(
       this.dockerProject,
-      this.scopedName("StepFunctionWorkflow"),
+      this.getScopedName("StepFunctionWorkflow"),
       {
         image: {
           image: "amazon/aws-cli",
@@ -62,11 +66,11 @@ export class Workflow extends FrameworkConstruct {
         networks: [
           {
             network: this.dockerNetwork,
-            aliases: [this.scopedName("stepfunctions.local", ".")],
+            aliases: [this.getScopedName("stepfunctions.local", ".")],
           },
         ],
         restart: RestartPolicy.NO,
-        command: `stepfunctions create-state-machine --endpoint-url http://stepfunctions.local:8083 --region us-east-1 --definition '${definitionString}' --name ${this.scopedName(
+        command: `stepfunctions create-state-machine --endpoint-url http://stepfunctions.local:8083 --region us-east-1 --definition '${definitionString}' --name ${this.getScopedName(
           "StateMachine"
         )} --role-arn arn:aws:iam::123456789012:role/DummyRole`,
       }
@@ -77,10 +81,14 @@ export class Workflow extends FrameworkConstruct {
 }
 
 export class StepFunctionEmulator extends FrameworkSingleton {
-  protected addToAwsDeployment(id: string): void {
+  constructor(scope: FrameworkSingleton.Interface, id: string) {
+    super(scope, id);
+    this.initialize();
+  }
+  addToAwsDeployment(id: string): void {
     // nothing to contribute to AWS deployment
   }
-  protected addToDockerCompose(): Service {
+  addToDockerCompose(): Service {
     return new Service(this.dockerProject, "StepFunctionsEmulator", {
       image: {
         image: "amazon/aws-stepfunctions-local",
@@ -119,10 +127,14 @@ export class StepFunctionEmulator extends FrameworkSingleton {
 }
 
 export class LambdaServerEmulator extends FrameworkSingleton {
-  protected addToAwsDeployment(id: string): void {
+  constructor(scope: FrameworkSingleton.Interface, id: string) {
+    super(scope, id);
+    this.initialize();
+  }
+  addToAwsDeployment(id: string): void {
     // nothing to contribute to AWS deployment
   }
-  protected addToDockerCompose(): Service {
+  addToDockerCompose(): Service {
     const functionName = `LocalHealthCheck`;
     new NodejsFunction(this, "LocalHealthCheck", {
       code: Code.fromAsset(resolve(__dirname, "../lambdas/health")),

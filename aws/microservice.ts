@@ -15,20 +15,29 @@ export interface MicroServiceProps {
 /**
  * A microservice that deploys to AWS Lambda using a Docker image and to local Docker Compose.
  */
-export class MicroService extends FrameworkConstruct<MicroServiceProps> {
-  localPort: number | undefined;
-  localName: string | undefined;
-  remoteArn: string | undefined;
-  localPath: string | undefined;
-  endpoint: string | undefined;
+export class MicroService extends FrameworkConstruct {
+  private localPort: number | undefined;
+  private localName: string | undefined;
+  private remoteArn: string | undefined;
+  private localPath: string | undefined;
+  private endpoint: string | undefined;
+
+  constructor(
+    scope: FrameworkConstruct.Interface,
+    id: string,
+    public readonly props: MicroServiceProps
+  ) {
+    super(scope, id);
+    this.initialize();
+  }
 
   getEndpoint(): string {
     assert(this.endpoint, "Endpoint not initialized");
     return this.endpoint;
   }
 
-  protected addToAwsDeployment(id: string): void {
-    this.localName = this.scopedName("MicroService");
+  addToAwsDeployment(id: string): void {
+    this.localName = this.getScopedName("MicroService");
     this.localPort = getRandomDeterministicPort(this.localName);
     const fn = new DockerImageFunction(this, this.localName, {
       code: DockerImageCode.fromImageAsset(resolve(this.props.functionPath)),
@@ -37,7 +46,7 @@ export class MicroService extends FrameworkConstruct<MicroServiceProps> {
       memorySize: 2048,
     });
     this.remoteArn = fn.functionArn;
-    this.localPath = `http://${this.scopedName("microservice.local", ".")}:${
+    this.localPath = `http://${this.getScopedName("microservice.local", ".")}:${
       this.localPort
     }`;
     if (this.frameworkEnv === "development") {
@@ -47,7 +56,7 @@ export class MicroService extends FrameworkConstruct<MicroServiceProps> {
     }
   }
 
-  protected addToDockerCompose() {
+  addToDockerCompose() {
     assert(this.localPort, "Local port not initialized");
     assert(this.localName, "Local name not initialized");
     return new Service(this.dockerProject, this.localName, {
@@ -68,7 +77,7 @@ export class MicroService extends FrameworkConstruct<MicroServiceProps> {
       networks: [
         {
           network: this.dockerNetwork,
-          aliases: [this.scopedName("microservice.local", ".")],
+          aliases: [this.getScopedName("microservice.local", ".")],
         },
       ],
       healthCheck: {

@@ -18,11 +18,25 @@ export interface NextJSAppProps {
  * A NextJS application that deploys to AWS Lambda using OpenNext
  * and to local Docker Compose as the dev server of the application.
  */
-export class NextJSApp extends FrameworkSingleton<NextJSAppProps> {
-  nextjs: Nextjs | undefined;
-  appUrl: string | undefined;
+export class NextJSApp extends FrameworkSingleton {
+  private nextjs: Nextjs | undefined;
+  private appUrl: string | undefined;
 
-  protected addToAwsDeployment(id: string): void {
+  constructor(
+    scope: FrameworkSingleton.Interface,
+    id: string,
+    public readonly props: NextJSAppProps
+  ) {
+    super(scope, id);
+    this.initialize();
+  }
+
+  getAppUrl(): string {
+    assert(this.appUrl, "App URL not initialized");
+    return this.appUrl;
+  }
+
+  addToAwsDeployment(id: string): void {
     this.nextjs = new Nextjs(this, "Nextjs", {
       nextjsPath: "app", // relative path from your project root to NextJS
       skipBuild: true, // <--- Uncomment this line to skip the build step
@@ -34,7 +48,6 @@ export class NextJSApp extends FrameworkSingleton<NextJSAppProps> {
         DEBUG: "wavekb*",
       },
     });
-    this.service = this.addToDockerCompose();
 
     if (this.frameworkEnv === "development") {
       this.appUrl = `http://nextjs.local:${DOCKER_DEV_PORT}`;
@@ -43,7 +56,7 @@ export class NextJSApp extends FrameworkSingleton<NextJSAppProps> {
     }
   }
 
-  protected addToDockerCompose() {
+  addToDockerCompose() {
     return new Service(this.dockerProject, "NextjsLocal", {
       image: {
         image: "node",

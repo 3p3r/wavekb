@@ -15,22 +15,27 @@ import {
  * A storage service that provides an S3 bucket in AWS and a MinIO service in local development.
  */
 export class StorageService extends FrameworkConstruct {
-  remoteBucketEndpoint: string | undefined;
-  localBucketEndpoint: string | undefined;
-  localBucketName: string | undefined;
-  localBucketPort: number | undefined;
-  bucketEndpoint: string | undefined;
+  private remoteBucketEndpoint: string | undefined;
+  private localBucketEndpoint: string | undefined;
+  private localBucketName: string | undefined;
+  private localBucketPort: number | undefined;
+  private bucketEndpoint: string | undefined;
+
+  constructor(scope: FrameworkConstruct.Interface, id: string) {
+    super(scope, id);
+    this.initialize();
+  }
 
   getBucketEndpoint(): string {
     assert(this.bucketEndpoint, "Bucket endpoint not initialized");
     return this.bucketEndpoint;
   }
 
-  protected addToAwsDeployment(id: string): void {
-    this.localBucketName = this.scopedName("StorageBucket");
+  addToAwsDeployment(id: string): void {
+    this.localBucketName = this.getScopedName("StorageBucket");
     const bucket = new Bucket(this, this.localBucketName);
     this.localBucketPort = getRandomDeterministicPort(this.localBucketName);
-    this.localBucketEndpoint = `http://${this.scopedName("s3.local", ".")}:${
+    this.localBucketEndpoint = `http://${this.getScopedName("s3.local", ".")}:${
       this.localBucketPort
     }/${this.localBucketName}`;
     this.remoteBucketEndpoint = bucket.urlForObject();
@@ -40,7 +45,7 @@ export class StorageService extends FrameworkConstruct {
         : this.remoteBucketEndpoint;
   }
 
-  protected addToDockerCompose() {
+  addToDockerCompose() {
     assert(this.localBucketName, "Local bucket name not initialized");
     assert(this.localBucketPort, "Local bucket port not initialized");
     return new Service(this.dockerProject, this.localBucketName, {
@@ -61,7 +66,7 @@ export class StorageService extends FrameworkConstruct {
       networks: [
         {
           network: this.dockerNetwork,
-          aliases: [this.scopedName("s3.local", ".")],
+          aliases: [this.getScopedName("s3.local", ".")],
         },
       ],
       entrypoint: "/bin/sh",

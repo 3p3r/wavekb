@@ -39,24 +39,29 @@ queues {
  * A Queue service that deploys to SQS on AWS and ElasticMQ in Docker Compose.
  */
 export class QueueService extends FrameworkConstruct {
-  queueArn: string | undefined;
-  localQueueArn: string | undefined;
-  localQueuePort: number | undefined;
-  remoteQueueArn: string | undefined;
-  localQueueName: string | undefined;
+  private queueArn: string | undefined;
+  private localQueueArn: string | undefined;
+  private localQueuePort: number | undefined;
+  private remoteQueueArn: string | undefined;
+  private localQueueName: string | undefined;
+
+  constructor(scope: FrameworkConstruct.Interface, id: string) {
+    super(scope, id);
+    this.initialize();
+  }
 
   getQueueArn(): string {
     assert(this.queueArn, "Queue ARN not initialized");
     return this.queueArn;
   }
 
-  protected addToAwsDeployment(id: string): void {
-    this.localQueueName = this.scopedName("Queue");
+  addToAwsDeployment(id: string): void {
+    this.localQueueName = this.getScopedName("Queue");
     this.localQueuePort = getRandomDeterministicPort(this.localQueueName);
-    const q = new Queue(this, this.scopedName("Queue"));
+    const q = new Queue(this, this.getScopedName("Queue"));
     this.remoteQueueArn = q.queueArn;
     this.localQueueArn = localArnFormat(
-      `${this.scopedName("sqs.local", ".")}:${this.localQueuePort}`,
+      `${this.getScopedName("sqs.local", ".")}:${this.localQueuePort}`,
       this.localQueueName
     );
     this.queueArn =
@@ -65,7 +70,7 @@ export class QueueService extends FrameworkConstruct {
         : this.remoteQueueArn;
   }
 
-  protected addToDockerCompose() {
+  addToDockerCompose() {
     assert(this.localQueueName, "localQueueName not initialized");
     assert(this.localQueuePort, "localQueuePort not initialized");
     const template = ELASTICMQ_CONFIG_TEMPLATE.replace(
@@ -94,7 +99,7 @@ export class QueueService extends FrameworkConstruct {
       networks: [
         {
           network: this.dockerNetwork,
-          aliases: [this.scopedName("sqs.local", ".")],
+          aliases: [this.getScopedName("sqs.local", ".")],
         },
       ],
     });

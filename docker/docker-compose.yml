@@ -12,23 +12,23 @@ services:
       http\n    host = \"*\"\n    port = 9324\n    context-path =
       \"\"\n}\n\nrest-sqs {\n    enabled = true\n    bind-port =
       9324\n    bind-hostname = \"0.0.0.0\"\n    sqs-limits =
-      strict\n}\n\nqueues {\n    e6f21583 {\n        defaultVisibilityTimeout =
-      10 seconds\n        delay = 0 seconds\n        receiveMessageWait = 0
-      seconds\n    }\n}' > /elastic.conf && java -Dconfig.file=/elastic.conf
-      -jar /opt/elasticmq-server.jar"
+      strict\n}\n\nqueues {\n    Queue819a1fca
+      {\n        defaultVisibilityTimeout = 10 seconds\n        delay = 0
+      seconds\n        receiveMessageWait = 0 seconds\n    }\n}' > /elastic.conf
+      && java -Dconfig.file=/elastic.conf -jar /opt/elasticmq-server.jar"
     privileged: false
     deploy:
       mode: replicated
       replicas: 1
     ports:
-      - 9324:9324
+      - 4885:9324
     networks:
       localdockerstacknetwork:
         aliases:
-          - sqs.local
+          - sqs.local.819a1fca
   storagebucketa8622c71:
     image: minio/minio:latest
-    command: -c 'mkdir -p /data/46b6c6fb && /usr/bin/minio server /data'
+    command: -c 'mkdir -p /data/StorageBucketa8622c71 && /usr/bin/minio server /data'
     entrypoint: /bin/sh
     privileged: false
     deploy:
@@ -38,16 +38,16 @@ services:
       MINIO_ROOT_USER: testAccessKey
       MINIO_ROOT_PASSWORD: testSecretAccessKey
     ports:
-      - 9000:9000
+      - 50861:9000
     volumes:
       - type: bind
-        source: ../.s3/46b6c6fb
+        source: ../.s3/StorageBucketa8622c71
         target: /data
     networks:
       localdockerstacknetwork:
         aliases:
-          - s3.local
-  postgreslocal:
+          - s3.local.a8622c71
+  postgres8d8e2d81:
     image: postgres:latest
     command: postgres
     privileged: false
@@ -60,15 +60,15 @@ services:
       POSTGRES_PASSWORD: local
       POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - 5432:5432
+      - 6079:5432
     volumes:
       - type: bind
-        source: ../.postgres
+        source: ../.postgres/wavekb-local8d8e2d81
         target: /var/lib/postgresql/data
     networks:
       localdockerstacknetwork:
         aliases:
-          - postgres.local
+          - postgres.local.8d8e2d81
     healthcheck:
       test:
         - CMD-SHELL
@@ -170,16 +170,16 @@ services:
     depends_on:
       stepfunctionsemulator:
         condition: service_healthy
-      postgreslocal:
+      postgres8d8e2d81:
         condition: service_healthy
-      queueservice819a1fca:
-        condition: service_started
       storagebucketa8622c71:
+        condition: service_started
+      queueservice819a1fca:
         condition: service_started
   triggerscript4f77d86b:
     working_dir: /b635197f
     image: node:alpine
-    command: -e 'require("./index.ts").handler()'
+    command: npx tsx index.ts
     privileged: false
     restart: no
     deploy:
@@ -189,8 +189,11 @@ services:
       - type: bind
         source: ../lambdas/seed
         target: /b635197f
+      - type: bind
+        source: ../node_modules
+        target: /b635197f/node_modules
     depends_on:
-      postgreslocal:
+      postgres8d8e2d81:
         condition: service_healthy
   microservicef1f342ce:
     build:
@@ -200,9 +203,9 @@ services:
       mode: replicated
       replicas: 1
     environment:
-      PORT: "8000"
+      PORT: "5080"
     ports:
-      - 8000:8000
+      - 5080:8000
     networks:
       localdockerstacknetwork:
         aliases:
@@ -210,7 +213,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - curl -f http://localhost:8000/health || exit 1
+        - curl -f http://localhost:5080/health || exit 1
       interval: 30s
       timeout: 5s
       retries: 3
@@ -229,9 +232,9 @@ services:
     environment:
       DEBUG: wavekb*
       PORT: "4000"
-      QUEUE_URL: http://sqs.local:9324/e6f21583
-      STORAGE_URL: http://s3.local:9000/46b6c6fb
-      POSTGRES_URL: postgres://wavekb:local@postgres.local/wavekb-local
+      QUEUE_URL: arn:aws:sqs.local.819a1fca:4885:us-east-1:123456789012:Queue819a1fca
+      STORAGE_URL: http://s3.local.a8622c71:50861/StorageBucketa8622c71
+      POSTGRES_URL: postgres://wavekb:local@postgres.local.8d8e2d81:6079/wavekb-local
       FRAMEWORK_ENVIRONMENT: development
     ports:
       - 4000:4000

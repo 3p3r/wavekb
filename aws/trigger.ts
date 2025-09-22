@@ -18,9 +18,18 @@ export interface TriggerScriptProps {
  * A one-time script that runs before or after other constructs, implemented with AWS Lambda
  * and CDK Triggers in production and a simple Node.js service in local development.
  */
-export class TriggerScript extends FrameworkConstruct<TriggerScriptProps> {
-  trigger: Trigger | undefined;
-  localName: string | undefined;
+export class TriggerScript extends FrameworkConstruct {
+  private trigger: Trigger | undefined;
+  private localName: string | undefined;
+
+  constructor(
+    scope: FrameworkConstruct.Interface,
+    id: string,
+    public readonly props: TriggerScriptProps
+  ) {
+    super(scope, id);
+    this.initialize();
+  }
 
   executeAfter(construct: FrameworkConstruct) {
     assert(this.trigger, "Trigger not initialized");
@@ -41,9 +50,9 @@ export class TriggerScript extends FrameworkConstruct<TriggerScriptProps> {
     );
   }
 
-  protected addToAwsDeployment(id: string): void {
-    this.localName = this.scopedName("script");
-    const fn = new NodejsFunction(this, this.scopedName("TriggerFunction"), {
+  addToAwsDeployment(id: string): void {
+    this.localName = this.getScopedName("script");
+    const fn = new NodejsFunction(this, this.getScopedName("TriggerFunction"), {
       handler: "index.handler",
       runtime: Runtime.NODEJS_22_X,
       code: Code.fromAsset(this.props.path),
@@ -51,40 +60,41 @@ export class TriggerScript extends FrameworkConstruct<TriggerScriptProps> {
       timeout: Duration.minutes(5),
       memorySize: 1024,
     });
-    this.trigger = new Trigger(this, this.scopedName("Trigger"), {
+    this.trigger = new Trigger(this, this.getScopedName("Trigger"), {
       handler: fn,
       invocationType: InvocationType.REQUEST_RESPONSE,
     });
   }
 
-  protected addToDockerCompose(): Service {
+  addToDockerCompose(): Service {
     assert(this.localName, "Local name not initialized");
     const scriptDir = resolve(this.props.path);
     const pathHash = smallHash(scriptDir);
-    return new Service(this.dockerProject, this.scopedName("TriggerScript"), {
-      image: {
-        image: "public.ecr.aws/sam/build-nodejs22.x",
-      },
-      // todo: env vars
-      command: `sam local invoke ${this.localName}`,
-      restart: RestartPolicy.NO,
-      workingDir: "/app",
-      volumes: [
-        {
-          source: this.frameworkApp.toDockerVolumeSourcePath(scriptDir),
-          target: `/${pathHash}`,
+    return new Service(
+      this.dockerProject,
+      this.getScopedName("TriggerScript"),
+      {
+        image: {
+          image: "node",
+          tag: "alpine",
         },
-        {
-          source: this.frameworkApp.toDockerVolumeSourcePath(
-            resolve(__dirname, "..")
-          ),
-          target: "/app",
-        },
-        {
-          source: "/var/run/docker.sock",
-          target: "/var/run/docker.sock",
-        },
-      ],
-    });
+        // todo: env vars
+        command: `npx tsx index.ts`,
+        restart: RestartPolicy.NO,
+        workingDir: `/${pathHash}`,
+        volumes: [
+          {
+            source: this.frameworkApp.toDockerVolumeSourcePath(scriptDir),
+            target: `/${pathHash}`,
+          },
+          {
+            source: this.frameworkApp.toDockerVolumeSourcePath(
+              resolve(__dirname, "..", "node_modules")
+            ),
+            target: `/${pathHash}/node_modules`,
+          },
+        ],
+      }
+    );
   }
 }

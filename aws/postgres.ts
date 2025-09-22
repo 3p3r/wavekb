@@ -12,21 +12,26 @@ import { getRandomDeterministicPort } from "./common";
  * A Postgres SQL service that deploys to Amazon DSQL on AWS and Postgres in Docker Compose.
  */
 export class Postgres extends FrameworkConstruct {
-  remoteEndpoint: string | undefined;
-  localEndpoint: string | undefined;
-  localPort: number | undefined;
-  endpoint: string | undefined;
+  private remoteEndpoint: string | undefined;
+  private localEndpoint: string | undefined;
+  private localPort: number | undefined;
+  private endpoint: string | undefined;
 
   static readonly LOCAL_POSTGRES_USER = "wavekb" as const;
   static readonly LOCAL_POSTGRES_PASSWORD = "local" as const;
   static readonly LOCAL_POSTGRES_DB = "wavekb-local" as const;
+
+  constructor(scope: FrameworkConstruct.Interface, id: string) {
+    super(scope, id);
+    this.initialize();
+  }
 
   getEndpoint(): string {
     assert(this.endpoint, "Postgres endpoint not initialized");
     return this.endpoint;
   }
 
-  protected addToAwsDeployment(id: string): void {
+  addToAwsDeployment(id: string): void {
     const db = new CfnCluster(this, "DsqlCluster", {
       deletionProtectionEnabled: false,
     });
@@ -36,10 +41,10 @@ export class Postgres extends FrameworkConstruct {
 
     this.remoteEndpoint = endpoint;
 
-    this.localPort = getRandomDeterministicPort(this.scopedName("Postgres"));
+    this.localPort = getRandomDeterministicPort(this.getScopedName("Postgres"));
     this.localEndpoint = `postgres://${Postgres.LOCAL_POSTGRES_USER}:${
       Postgres.LOCAL_POSTGRES_PASSWORD
-    }@${this.scopedName("postgres.local", ".")}:${this.localPort}/${
+    }@${this.getScopedName("postgres.local", ".")}:${this.localPort}/${
       Postgres.LOCAL_POSTGRES_DB
     }`;
 
@@ -50,9 +55,9 @@ export class Postgres extends FrameworkConstruct {
     }
   }
 
-  protected addToDockerCompose() {
+  addToDockerCompose() {
     assert(this.localPort, "Local port not initialized");
-    return new Service(this.dockerProject, this.scopedName("Postgres"), {
+    return new Service(this.dockerProject, this.getScopedName("Postgres"), {
       image: {
         image: "postgres",
         tag: "latest",
@@ -66,7 +71,7 @@ export class Postgres extends FrameworkConstruct {
       networks: [
         {
           network: this.dockerNetwork,
-          aliases: [this.scopedName("postgres.local", ".")],
+          aliases: [this.getScopedName("postgres.local", ".")],
         },
       ],
       command: "postgres",
@@ -83,7 +88,7 @@ export class Postgres extends FrameworkConstruct {
               __dirname,
               "..",
               ".postgres",
-              this.scopedName(Postgres.LOCAL_POSTGRES_DB)
+              this.getScopedName(Postgres.LOCAL_POSTGRES_DB)
             )
           ),
           target: "/var/lib/postgresql/data",

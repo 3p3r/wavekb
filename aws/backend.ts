@@ -3,7 +3,7 @@ import "source-map-support/register";
 
 import d from "debug";
 
-import { FrameworkStack } from "./framework";
+import { DependencyCondition, FrameworkStack } from "./framework";
 import { MicroService } from "./microservice";
 import { NextJSApp } from "./nextjs";
 import { Postgres } from "./postgres";
@@ -34,22 +34,13 @@ const nextjsApp = new NextJSApp(stack, "NextJSApp", {
 seeder.executeAfter(postgres);
 seeder.executeBefore(nextjsApp);
 
-workflow
-  .getServiceOrThrow()
-  .addDependency(postgres.getServiceOrThrow(), "service_healthy");
-workflow
-  .getServiceOrThrow()
-  .addDependency(queue.getServiceOrThrow(), "service_started");
-workflow
-  .getServiceOrThrow()
-  .addDependency(storage.getServiceOrThrow(), "service_started");
-crawler
-  .getServiceOrThrow()
-  .addDependency(workflow.getServiceOrThrow(), "service_started");
-nextjsApp
-  .getServiceOrThrow()
-  .addDependency(workflow.getServiceOrThrow(), "service_started");
+workflow.dependsOn(postgres, DependencyCondition.Running);
+workflow.dependsOn(storage, DependencyCondition.Started);
+workflow.dependsOn(queue, DependencyCondition.Started);
+
+crawler.dependsOn(workflow, DependencyCondition.Started);
+nextjsApp.dependsOn(workflow, DependencyCondition.Started);
 
 stack.frameworkApp.synthesize();
 
-debug("NextJS app URL: %s", nextjsApp.appUrl);
+debug("NextJS app URL: %s", nextjsApp.getAppUrl());
