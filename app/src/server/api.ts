@@ -1,12 +1,12 @@
 import d from "debug";
-import { URL } from "url";
 import assert from "assert";
-import { Pool } from "pg";
-import { SqlDatabase } from "remult";
+import { SqlDatabase, UserInfo } from "remult";
 import { PostgresDataProvider } from "remult/postgres";
-import { DsqlSigner } from "@aws-sdk/dsql-signer";
+import { BetterAuthError } from "better-auth";
 import { remultNext } from "remult/remult-next";
 import { entities } from "@/shared";
+import { createDatabasePool } from "./pool";
+import { auth } from "./auth";
 
 const debug = d("wavekb:api");
 const DEVELOPMENT = process.env.FRAMEWORK_ENVIRONMENT === "development";
@@ -19,49 +19,26 @@ if (!DEVELOPMENT && process.env.PORT) {
 
 export const api = remultNext({
   entities,
-  dataProvider: async () => {
-    let pool: Pool;
-    const max = 20;
-    const idleTimeoutMillis = 30000;
-    const connectionTimeoutMillis = 5000;
-    if (DEVELOPMENT) {
-      debug("Connecting to database in development");
-      const url = new URL(process.env.POSTGRES_URL || "");
-      assert(url.hostname, "POSTGRES_URL must have a hostname in development");
-      pool = new Pool({
-        host: url.hostname,
-        database: url.pathname.slice(1),
-        user: url.username,
-        password: url.password,
-        ssl: false,
-        max,
-        idleTimeoutMillis,
-        connectionTimeoutMillis,
-      });
-    } else {
-      debug("Connecting to database in production");
-      assert(
-        process.env.POSTGRES_URL,
-        "POSTGRES_URL must be set in production"
+  dataProvider: new SqlDatabase(new PostgresDataProvider(createDatabasePool())),
+  async getUser(request) {
+    const s = await auth.api.getSession({
+      headers: request.headers as Record<string, string>,
+    });
+
+    if (!s) {
+      throw new BetterAuthError(
+        "getUserInfo: No session found in request.",
+        JSON.stringify(request)
       );
-      const signer = new DsqlSigner({
-        hostname: process.env.POSTGRES_URL,
-      });
-      pool = new Pool({
-        host: process.env.POSTGRES_URL,
-        port: 5432,
-        database: "postgres",
-        user: "admin", // todo: add IAM integration to avoid connecting with admin
-        password: async function () {
-          return await signer.getDbConnectAdminAuthToken();
-        },
-        ssl: true,
-        max,
-        idleTimeoutMillis,
-        connectionTimeoutMillis,
-      });
     }
-    return new SqlDatabase(new PostgresDataProvider(pool));
+
+    const { id = "", name = "" } = s ? s.user : {};
+    const roles =
+      "role" in s.user
+        ? (s.user.role as string).split(",").map((r) => r.trim())
+        : ([] satisfies string[]);
+
+    return { id, name, roles } satisfies UserInfo;
   },
 });
 
