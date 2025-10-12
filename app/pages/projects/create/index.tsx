@@ -1,18 +1,19 @@
-import { AntdListInferencer } from "@refinedev/inferencer/antd";
+import { AntdCreateInferencer } from "@refinedev/inferencer/antd";
 import { GetServerSideProps } from "next";
 import { authProvider } from "@/provider/authProvider";
 
-export default function SegmentsList() {
-  return <AntdListInferencer hideCodeViewerInProduction />;
+export default function ProjectsCreate() {
+  return <AntdCreateInferencer hideCodeViewerInProduction />;
 }
 
 export const getServerSideProps: GetServerSideProps<{}> = async (context) => {
   const { authenticated, redirectTo } = await authProvider.check(context);
+
   if (!authenticated) {
     return {
       props: {},
       redirect: {
-        destination: `${redirectTo}?to=${encodeURIComponent("/segments")}`,
+        destination: `${redirectTo}?to=${encodeURIComponent("/projects")}`,
         permanent: false,
       },
     };

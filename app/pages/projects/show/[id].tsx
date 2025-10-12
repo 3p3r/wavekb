@@ -2,7 +2,7 @@ import { AntdShowInferencer } from "@refinedev/inferencer/antd";
 import { GetServerSideProps } from "next";
 import { authProvider } from "@/provider/authProvider";
 
-export default function SegmentsShow() {
+export default function ProjectsShow() {
   return <AntdShowInferencer hideCodeViewerInProduction />;
 }
 
@@ -13,7 +13,7 @@ export const getServerSideProps: GetServerSideProps<{}> = async (context) => {
     return {
       props: {},
       redirect: {
-        destination: `${redirectTo}?to=${encodeURIComponent("/segments")}`,
+        destination: `${redirectTo}?to=${encodeURIComponent("/projects")}`,
         permanent: false,
       },
     };

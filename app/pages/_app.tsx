@@ -48,11 +48,11 @@ function NextApp({ Component, pageProps }: AppPropsWithLayout): JSX.Element {
             authProvider={authProvider}
             resources={[
               {
-                name: "segments",
-                list: "/segments",
-                create: "/segments/create",
-                edit: "/segments/edit/:id",
-                show: "/segments/show/:id",
+                name: "projects",
+                list: "/projects",
+                create: "/projects/create",
+                edit: "/projects/edit/:id",
+                show: "/projects/show/:id",
                 meta: {
                   canDelete: true,
                 },
