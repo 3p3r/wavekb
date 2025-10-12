@@ -16,10 +16,10 @@ export class CrossCorrelation {
   @Fields.json()
   bins: number[] = [];
 
-  @Relations.toOne(() => Signal, "cumulativeUserSignal")
+  @Relations.toOne(() => Signal, "cumulativeUserSignalId")
   cumulativeUserSignal?: Signal;
 
-  @Relations.toOne(() => Signal, "cumulativeBaseSignal")
+  @Relations.toOne(() => Signal, "cumulativeBaseSignalId")
   cumulativeBaseSignal?: Signal;
 }
 
@@ -53,6 +53,9 @@ export class Project {
   @Relations.toOne(() => User)
   owner?: User;
 
-  // todo: xcorr
-  // todo: stft
+  @Relations.toOne(() => CrossCorrelation)
+  xcorr?: CrossCorrelation;
+
+  @Relations.toOne(() => Spectrogram)
+  stft?: Spectrogram;
 }

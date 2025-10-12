@@ -29,9 +29,6 @@ export class Upload implements Embeddable {
   @Fields.string()
   url = "";
 
-  @Relations.toOne(() => User)
-  owner?: User;
-
   @Relations.toOne(() => Project)
   project?: Project;
 }
@@ -45,9 +42,6 @@ export class Query implements Embeddable {
 
   @Fields.string()
   content = "";
-
-  @Relations.toOne(() => User)
-  owner?: User;
 
   @Relations.toOne(() => Project)
   project?: Project;

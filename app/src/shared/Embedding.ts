@@ -9,10 +9,11 @@ export class Embedding {
   @Fields.id()
   id = "";
 
+  @Fields.integer()
+  size = 0;
+
   @Fields.json()
   weights: number[] = [];
-
-  // todo: fix this mess
 
   @Relations.toOne(() => Query)
   query?: Query;
