@@ -25,7 +25,7 @@ export class TriggerScript extends FrameworkConstruct {
   constructor(
     scope: FrameworkConstruct.Interface,
     id: string,
-    public readonly props: TriggerScriptProps
+    public readonly props: TriggerScriptProps,
   ) {
     super(scope, id);
     this.initialize();
@@ -46,7 +46,7 @@ export class TriggerScript extends FrameworkConstruct {
     assert(construct.service, "Other construct has no service");
     construct.service.addDependency(
       this.service,
-      "service_completed_successfully"
+      "service_completed_successfully",
     );
   }
 
@@ -89,12 +89,12 @@ export class TriggerScript extends FrameworkConstruct {
           },
           {
             source: this.frameworkApp.toDockerVolumeSourcePath(
-              resolve(__dirname, "..", "node_modules")
+              resolve(__dirname, "..", "node_modules"),
             ),
             target: `/${pathHash}/node_modules`,
           },
         ],
-      }
+      },
     );
   }
 }

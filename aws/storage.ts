@@ -74,7 +74,7 @@ export class StorageService extends FrameworkConstruct {
       volumes: [
         {
           source: this.frameworkApp.toDockerVolumeSourcePath(
-            resolve(__dirname, "..", ".s3", this.localBucketName)
+            resolve(__dirname, "..", ".s3", this.localBucketName),
           ),
           target: "/data",
         },

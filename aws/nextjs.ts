@@ -25,7 +25,7 @@ export class NextJSApp extends FrameworkSingleton {
   constructor(
     scope: FrameworkSingleton.Interface,
     id: string,
-    public readonly props: NextJSAppProps
+    public readonly props: NextJSAppProps,
   ) {
     super(scope, id);
     this.initialize();
@@ -87,7 +87,7 @@ export class NextJSApp extends FrameworkSingleton {
       volumes: [
         {
           source: this.frameworkApp.toDockerVolumeSourcePath(
-            resolve(__dirname, "..", "app")
+            resolve(__dirname, "..", "app"),
           ),
           target: "/app",
         },

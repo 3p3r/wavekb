@@ -28,7 +28,7 @@ export const api = remultNext({
     if (!s) {
       throw new BetterAuthError(
         "getUserInfo: No session found in request.",
-        JSON.stringify(request)
+        JSON.stringify(request),
       );
     }
 

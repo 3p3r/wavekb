@@ -25,7 +25,7 @@ export class MicroService extends FrameworkConstruct {
   constructor(
     scope: FrameworkConstruct.Interface,
     id: string,
-    public readonly props: MicroServiceProps
+    public readonly props: MicroServiceProps,
   ) {
     super(scope, id);
     this.initialize();
@@ -46,9 +46,7 @@ export class MicroService extends FrameworkConstruct {
       memorySize: 2048,
     });
     this.remoteArn = fn.functionArn;
-    this.localPath = `http://${this.getScopedName("microservice.local", ".")}:${
-      this.localPort
-    }`;
+    this.localPath = `http://${this.getScopedName("microservice.local", ".")}:${this.localPort}`;
     if (this.frameworkEnv === "development") {
       this.endpoint = this.localPath;
     } else {
@@ -62,7 +60,7 @@ export class MicroService extends FrameworkConstruct {
     return new Service(this.dockerProject, this.localName, {
       build: {
         context: this.frameworkApp.toDockerVolumeSourcePath(
-          this.props.functionPath
+          this.props.functionPath,
         ),
       },
       environment: {

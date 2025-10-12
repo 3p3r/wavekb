@@ -26,8 +26,8 @@ export const getRandomDeterministicPort = (() => {
       typeof seed === "undefined"
         ? history.length
         : typeof seed === "number"
-        ? seed
-        : stringHash(seed);
+          ? seed
+          : stringHash(seed);
     const rng = new Prando(counter);
     const port = rng.nextInt(1024, 65535);
     if (history.includes(port)) {

@@ -7,7 +7,7 @@ import {
 } from "remult";
 
 export const remultDataProvider = (
-  entities: any[]
+  entities: any[],
 ): Omit<Required<DataProvider>, "createMany" | "updateMany" | "deleteMany"> => {
   function repoByKey(key: string) {
     for (const e of entities) {
@@ -46,7 +46,7 @@ export const remultDataProvider = (
       return {
         data: (await repoByKey(resource).update(
           id as any,
-          variables as any
+          variables as any,
         )) as any,
       };
     },
@@ -152,14 +152,14 @@ export const generateFilter = (filters?: CrudFilters) => {
               `operator ${
                 lf.operator
               } was not yet implemented, please open an issue and we'll add this. ${JSON.stringify(
-                filter
-              )}`
+                filter,
+              )}`,
             );
         }
         where[lf.field] = z;
       } else {
         throw Error(
-          "only logical filters were implemented, please open an issue and we'll add this"
+          "only logical filters were implemented, please open an issue and we'll add this",
         );
       }
     }

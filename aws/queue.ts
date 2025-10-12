@@ -62,7 +62,7 @@ export class QueueService extends FrameworkConstruct {
     this.remoteQueueArn = q.queueArn;
     this.localQueueArn = localArnFormat(
       `${this.getScopedName("sqs.local", ".")}:${this.localQueuePort}`,
-      this.localQueueName
+      this.localQueueName,
     );
     this.queueArn =
       this.frameworkEnv === "development"
@@ -75,7 +75,7 @@ export class QueueService extends FrameworkConstruct {
     assert(this.localQueuePort, "localQueuePort not initialized");
     const template = ELASTICMQ_CONFIG_TEMPLATE.replace(
       /<QUEUE_NAME>/g,
-      this.localQueueName
+      this.localQueueName,
     );
     const escapedTemplate = JSON.stringify(template, null, 0).slice(1, -1);
     const command = [

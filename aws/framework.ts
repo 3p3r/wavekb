@@ -39,17 +39,17 @@ export class FrameworkApp extends awsCdk.App {
   public readonly dockerNetwork: dockerComposeCdk.Network;
   constructor(
     public readonly env: FrameworkEnvironment = getDefaultEnvironment(),
-    public readonly dockerComposePath: string = getDefaultDockerComposePath()
+    public readonly dockerComposePath: string = getDefaultDockerComposePath(),
   ) {
     super();
     this.dockerCompose = new dockerComposeCdk.App();
     this.dockerProject = new dockerComposeCdk.Project(
       this.dockerCompose,
-      "LocalDockerStackProject"
+      "LocalDockerStackProject",
     );
     this.dockerNetwork = new dockerComposeCdk.Network(
       this.dockerProject,
-      "LocalDockerStackNetwork"
+      "LocalDockerStackNetwork",
     );
   }
   /**
@@ -78,7 +78,7 @@ export class FrameworkApp extends awsCdk.App {
         "# Do not modify directly.",
         "# ---",
         dockerComposeYAML,
-      ].join("\n")
+      ].join("\n"),
     );
     this.synth();
   }
@@ -136,7 +136,7 @@ export class FrameworkStack
         account: process.env.CDK_DEFAULT_ACCOUNT,
         region: process.env.CDK_DEFAULT_REGION,
       },
-    }
+    },
   ) {
     super(scope, id, opts);
     this.frameworkApp = scope;
@@ -235,7 +235,7 @@ export abstract class FrameworkConstruct
   }
   dependsOn(
     dep: IFrameworkConstruct,
-    cond = DependencyCondition.Started
+    cond = DependencyCondition.Started,
   ): void {
     // this.node.addDependency(dep.node);
     this.getServiceOrThrow().addDependency(
@@ -243,8 +243,8 @@ export abstract class FrameworkConstruct
       cond === DependencyCondition.Stopped
         ? "service_completed_successfully"
         : cond === DependencyCondition.Running
-        ? "service_healthy"
-        : "service_started"
+          ? "service_healthy"
+          : "service_started",
     );
   }
 }
@@ -261,7 +261,7 @@ export namespace FrameworkSingleton {
  * Utility to create singleton constructs within a given scope.
  */
 export abstract class FrameworkSingleton<
-  PropsT = any
+  PropsT = any,
 > extends FrameworkConstruct {
   constructor(scope: FrameworkConstruct.Interface, id: string) {
     super(scope, id);
@@ -272,7 +272,7 @@ export abstract class FrameworkSingleton<
   }
   public static getInstanceInScope(
     scope: FrameworkConstruct.Interface,
-    id: string
+    id: string,
   ): FrameworkSingleton | null {
     const stack = awsCdk.Stack.of(scope) as FrameworkStack;
     stack.node.children.forEach((child) => {

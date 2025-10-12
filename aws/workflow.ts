@@ -36,7 +36,7 @@ export class Workflow extends FrameworkConstruct {
     const passState = new Pass(this, this.getScopedName("Pass"));
     this.stateGraph = new StateGraph(
       passState,
-      this.getScopedName("StateGraph")
+      this.getScopedName("StateGraph"),
     );
     new StateMachine(this, this.getScopedName("StateMachine"), {
       definitionBody: DefinitionBody.fromString(this.stateGraph.toString()),
@@ -71,9 +71,9 @@ export class Workflow extends FrameworkConstruct {
         ],
         restart: RestartPolicy.NO,
         command: `stepfunctions create-state-machine --endpoint-url http://stepfunctions.local:8083 --region us-east-1 --definition '${definitionString}' --name ${this.getScopedName(
-          "StateMachine"
+          "StateMachine",
         )} --role-arn arn:aws:iam::123456789012:role/DummyRole`,
-      }
+      },
     );
     service.addDependency(sfe.getServiceOrThrow(), "service_healthy");
     return service;
@@ -160,7 +160,7 @@ export class LambdaServerEmulator extends FrameworkSingleton {
       volumes: [
         {
           source: this.frameworkApp.toDockerVolumeSourcePath(
-            resolve(__dirname, "..")
+            resolve(__dirname, ".."),
           ),
           target: "/app",
         },

@@ -12,7 +12,9 @@
     "diagram": "npm-run-all synth digram:generate",
     "digram:generate": "cdk-dia",
     "dev:up": "docker-compose -f docker/docker-compose.yml up --remove-orphans",
-    "dev:down": "docker-compose -f docker/docker-compose.yml down"
+    "dev:down": "docker-compose -f docker/docker-compose.yml down",
+    "format": "biome format --write",
+    "lint": "biome lint --write"
   },
   "repository": {
     "type": "git",
@@ -29,6 +31,7 @@
   },
   "homepage": "https://github.com/3p3r/wavekb#readme",
   "devDependencies": {
+    "@biomejs/biome": "2.2.5",
     "@types/debug": "^4.1.12",
     "@types/node": "^24.3.0",
     "@types/string-hash": "^1.1.3",

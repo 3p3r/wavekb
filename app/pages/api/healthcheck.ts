@@ -7,7 +7,7 @@ type HealthCheckResponse = {
 
 export default function handler(
   req: NextApiRequest,
-  res: NextApiResponse<HealthCheckResponse>
+  res: NextApiResponse<HealthCheckResponse>,
 ) {
   res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
 }

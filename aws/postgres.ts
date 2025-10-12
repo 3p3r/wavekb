@@ -44,9 +44,7 @@ export class Postgres extends FrameworkConstruct {
     this.localPort = getRandomDeterministicPort(this.getScopedName("Postgres"));
     this.localEndpoint = `postgres://${Postgres.LOCAL_POSTGRES_USER}:${
       Postgres.LOCAL_POSTGRES_PASSWORD
-    }@${this.getScopedName("postgres.local", ".")}:${this.localPort}/${
-      Postgres.LOCAL_POSTGRES_DB
-    }`;
+    }@${this.getScopedName("postgres.local", ".")}:${this.localPort}/${Postgres.LOCAL_POSTGRES_DB}`;
 
     if (this.frameworkEnv === "development") {
       this.endpoint = this.localEndpoint;
@@ -88,8 +86,8 @@ export class Postgres extends FrameworkConstruct {
               __dirname,
               "..",
               ".postgres",
-              this.getScopedName(Postgres.LOCAL_POSTGRES_DB)
-            )
+              this.getScopedName(Postgres.LOCAL_POSTGRES_DB),
+            ),
           ),
           target: "/var/lib/postgresql/data",
         },
